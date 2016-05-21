@@ -1,6 +1,6 @@
 
 /*
-    pbrt source code is Copyright(c) 1998-2015
+    pbrt source code is Copyright(c) 1998-2016
                         Matt Pharr, Greg Humphreys, and Wenzel Jakob.
 
     This file is part of pbrt.
@@ -30,7 +30,6 @@
 
  */
 
-#include "stdafx.h"
 
 // shapes/loopsubdiv.cpp*
 #include "shapes/loopsubdiv.h"
@@ -393,7 +392,7 @@ std::vector<std::shared_ptr<Shape>> LoopSubdivide(
         return CreateTriangleMesh(ObjectToWorld, WorldToObject,
                                   reverseOrientation, ntris, verts.get(),
                                   totVerts, pLimit.get(), nullptr, &Ns[0],
-                                  nullptr, nullptr);
+                                  nullptr, nullptr, nullptr);
     }
 }
 

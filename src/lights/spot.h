@@ -1,6 +1,6 @@
 
 /*
-    pbrt source code is Copyright(c) 1998-2015
+    pbrt source code is Copyright(c) 1998-2016
                         Matt Pharr, Greg Humphreys, and Wenzel Jakob.
 
     This file is part of pbrt.
@@ -37,7 +37,6 @@
 
 #ifndef PBRT_LIGHTS_SPOT_H
 #define PBRT_LIGHTS_SPOT_H
-#include "stdafx.h"
 
 // lights/spot.h*
 #include "pbrt.h"

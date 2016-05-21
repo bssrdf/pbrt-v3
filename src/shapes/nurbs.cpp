@@ -1,6 +1,6 @@
 
 /*
-    pbrt source code is Copyright(c) 1998-2015
+    pbrt source code is Copyright(c) 1998-2016
                         Matt Pharr, Greg Humphreys, and Wenzel Jakob.
 
     This file is part of pbrt.
@@ -30,7 +30,6 @@
 
  */
 
-#include "stdafx.h"
 
 // shapes/nurbs.cpp*
 #include "shapes/nurbs.h"
@@ -303,5 +302,5 @@ std::vector<std::shared_ptr<Shape>> CreateNURBS(const Transform *o2w,
 
     return CreateTriangleMesh(o2w, w2o, reverseOrientation, nTris,
                               vertices.get(), nVerts, evalPs.get(), nullptr,
-                              evalNs.get(), uvs.get(), nullptr);
+                              evalNs.get(), uvs.get(), nullptr, nullptr);
 }

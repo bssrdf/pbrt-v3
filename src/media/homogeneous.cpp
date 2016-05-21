@@ -1,6 +1,6 @@
 
 /*
-    pbrt source code is Copyright(c) 1998-2015
+    pbrt source code is Copyright(c) 1998-2016
                         Matt Pharr, Greg Humphreys, and Wenzel Jakob.
 
     This file is part of pbrt.
@@ -30,7 +30,6 @@
 
  */
 
-#include "stdafx.h"
 
 // media/homogeneous.cpp*
 #include "media/homogeneous.h"
@@ -64,5 +63,9 @@ Spectrum HomogeneousMedium::Sample(const Ray &ray, Sampler &sampler,
     Float pdf = 0;
     for (int i = 0; i < Spectrum::nSamples; ++i) pdf += density[i];
     pdf *= 1 / (Float)Spectrum::nSamples;
+    if (pdf == 0) {
+        Assert(Tr.IsBlack());
+        pdf = 1;
+    }
     return sampledMedium ? (Tr * sigma_s / pdf) : (Tr / pdf);
 }

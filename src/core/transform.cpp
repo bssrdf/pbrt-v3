@@ -1,6 +1,6 @@
 
 /*
-    pbrt source code is Copyright(c) 1998-2015
+    pbrt source code is Copyright(c) 1998-2016
                         Matt Pharr, Greg Humphreys, and Wenzel Jakob.
 
     This file is part of pbrt.
@@ -30,7 +30,6 @@
 
  */
 
-#include "stdafx.h"
 
 // core/transform.cpp*
 #include "transform.h"
@@ -84,7 +83,7 @@ Matrix4x4 Inverse(const Matrix4x4 &m) {
     Float minv[4][4];
     memcpy(minv, m.m, 4 * 4 * sizeof(Float));
     for (int i = 0; i < 4; i++) {
-        int irow = -1, icol = -1;
+        int irow = 0, icol = 0;
         Float big = 0.f;
         // Choose pivot
         for (int j = 0; j < 4; j++) {
@@ -266,7 +265,7 @@ SurfaceInteraction Transform::operator()(const SurfaceInteraction &si) const {
     // Transform remaining members of _SurfaceInteraction_
     const Transform &t = *this;
     ret.n = Normalize(t(si.n));
-    ret.wo = t(si.wo);
+    ret.wo = Normalize(t(si.wo));
     ret.time = si.time;
     ret.mediumInterface = si.mediumInterface;
     ret.uv = si.uv;
@@ -382,8 +381,11 @@ void IntervalFindZeros(Float c1, Float c2, Float c3, Float c4, Float c5,
             if (fNewton == 0 || fPrimeNewton == 0) break;
             tNewton = tNewton - fNewton / fPrimeNewton;
         }
-        zeros[*zeroCount] = tNewton;
-        (*zeroCount)++;
+        if (tNewton >= tInterval.low - 1e-3f &&
+            tNewton < tInterval.high + 1e-3f) {
+            zeros[*zeroCount] = tNewton;
+            (*zeroCount)++;
+        }
     }
 }
 
@@ -1213,35 +1215,6 @@ Bounds3f AnimatedTransform::MotionBounds(const Bounds3f &b) const {
     Bounds3f bounds;
     for (int corner = 0; corner < 8; ++corner)
         bounds = Union(bounds, BoundPointMotion(b.Corner(corner)));
-#if 0
-
-    // Check motion bounds vs sampled bounds
-    Bounds3f oldBounds;
-    const int nSteps = 1024;
-    for (int i = 0; i < nSteps; ++i) {
-        Transform t;
-        Float time = Lerp(float(i)/float(nSteps-1), startTime, endTime);
-        Interpolate(time, &t);
-        oldBounds = Union(oldBounds, t(b));
-    }
-
-    bool oldBigger = false;
-    for (int c = 0; c < 3; ++c)
-        oldBigger |= (oldBounds.pMin[c] < bounds.pMin[c] ||
-                      oldBounds.pMax[c] > bounds.pMax[c]);
-
-    //bool newMuchBigger = false;
-    //for (int c = 0; c < 3; ++c)
-    //    newMuchBigger |= (oldBounds.pMin[c] < bounds.pMin[c] ||
-    //                  oldBounds.pMax[c] > bounds.pMax[c]);
-
-    //if (oldBigger)
-    fprintf(stderr, "Old: (%f, %f, %f) - (%f, %f, %f)\n" "New: (%f, %f, %f) - (%f, %f, %f)\n",
-        oldBounds.pMin.x, oldBounds.pMin.y, oldBounds.pMin.z,
-        oldBounds.pMax.x, oldBounds.pMax.y, oldBounds.pMax.z,
-        bounds.pMin.x, bounds.pMin.y, bounds.pMin.z,
-        bounds.pMax.x, bounds.pMax.y, bounds.pMax.z);
-#endif
     return bounds;
 }
 
@@ -1252,7 +1225,7 @@ Bounds3f AnimatedTransform::BoundPointMotion(const Point3f &p) const {
     Float theta = std::acos(Clamp(cosTheta, -1, 1));
     for (int c = 0; c < 3; ++c) {
         // Find any motion derivative zeros for the component _c_
-        Float zeros[4];
+        Float zeros[8];
         int nZeros = 0;
         IntervalFindZeros(c1[c].Eval(p), c2[c].Eval(p), c3[c].Eval(p),
                           c4[c].Eval(p), c5[c].Eval(p), theta, Interval(0., 1.),

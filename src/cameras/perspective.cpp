@@ -1,6 +1,6 @@
 
 /*
-    pbrt source code is Copyright(c) 1998-2015
+    pbrt source code is Copyright(c) 1998-2016
                         Matt Pharr, Greg Humphreys, and Wenzel Jakob.
 
     This file is part of pbrt.
@@ -30,7 +30,6 @@
 
  */
 
-#include "stdafx.h"
 
 // cameras/perspective.cpp*
 #include "cameras/perspective.h"
@@ -142,7 +141,7 @@ Float PerspectiveCamera::GenerateRayDifferential(const CameraSample &sample,
     return 1;
 }
 
-Spectrum PerspectiveCamera::We(const Ray &ray, Point2f *raster) const {
+Spectrum PerspectiveCamera::We(const Ray &ray, Point2f *pRaster2) const {
     // Interpolate camera matrix and check if $\w{}$ is forward-facing
     Transform c2w;
     CameraToWorld.Interpolate(ray.time, &c2w);
@@ -154,7 +153,7 @@ Spectrum PerspectiveCamera::We(const Ray &ray, Point2f *raster) const {
     Point3f pRaster = Inverse(RasterToCamera)(Inverse(c2w)(pFocus));
 
     // Return raster position if requested
-    if (raster) *raster = Point2f(pRaster.x, pRaster.y);
+    if (pRaster2) *pRaster2 = Point2f(pRaster.x, pRaster.y);
 
     // Return zero importance for out of bounds points
     Bounds2i sampleBounds = film->GetSampleBounds();
@@ -235,7 +234,7 @@ PerspectiveCamera *CreatePerspectiveCamera(const ParamSet &params,
         std::swap(shutterclose, shutteropen);
     }
     Float lensradius = params.FindOneFloat("lensradius", 0.f);
-    Float focaldistance = params.FindOneFloat("focaldistance", 1e30f);
+    Float focaldistance = params.FindOneFloat("focaldistance", 1e6);
     Float frame = params.FindOneFloat(
         "frameaspectratio",
         Float(film->fullResolution.x) / Float(film->fullResolution.y));

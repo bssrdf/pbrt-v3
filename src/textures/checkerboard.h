@@ -1,6 +1,6 @@
 
 /*
-    pbrt source code is Copyright(c) 1998-2015
+    pbrt source code is Copyright(c) 1998-2016
                         Matt Pharr, Greg Humphreys, and Wenzel Jakob.
 
     This file is part of pbrt.
@@ -37,16 +37,11 @@
 
 #ifndef PBRT_TEXTURES_CHECKERBOARD_H
 #define PBRT_TEXTURES_CHECKERBOARD_H
-#include "stdafx.h"
 
 // textures/checkerboard.h*
 #include "pbrt.h"
 #include "texture.h"
 #include "paramset.h"
-#include "sampling.h"
-#include "shape.h"
-#include "parallel.h"
-#include "progressreporter.h"
 
 // AAMethod Declaration
 enum class AAMethod { None, ClosedForm };

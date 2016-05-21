@@ -1,6 +1,6 @@
 
 /*
-    pbrt source code is Copyright(c) 1998-2015
+    pbrt source code is Copyright(c) 1998-2016
                         Matt Pharr, Greg Humphreys, and Wenzel Jakob.
 
     This file is part of pbrt.
@@ -37,7 +37,6 @@
 
 #ifndef PBRT_SHAPES_TRIANGLE_H
 #define PBRT_SHAPES_TRIANGLE_H
-#include "stdafx.h"
 
 // shapes/triangle.h*
 #include "shape.h"
@@ -51,7 +50,8 @@ struct TriangleMesh {
     TriangleMesh(const Transform &ObjectToWorld, int nTriangles,
                  const int *vertexIndices, int nVertices, const Point3f *P,
                  const Vector3f *S, const Normal3f *N, const Point2f *uv,
-                 const std::shared_ptr<Texture<Float>> &alphaMask);
+                 const std::shared_ptr<Texture<Float>> &alphaMask,
+                 const std::shared_ptr<Texture<Float>> &shadowAlphaMask);
 
     // TriangleMesh Data
     const int nTriangles, nVertices;
@@ -60,7 +60,7 @@ struct TriangleMesh {
     std::unique_ptr<Normal3f[]> n;
     std::unique_ptr<Vector3f[]> s;
     std::unique_ptr<Point2f[]> uv;
-    std::shared_ptr<Texture<Float>> alphaMask;
+    std::shared_ptr<Texture<Float>> alphaMask, shadowAlphaMask;
 };
 
 class Triangle : public Shape {
@@ -104,11 +104,16 @@ std::vector<std::shared_ptr<Shape>> CreateTriangleMesh(
     const Transform *o2w, const Transform *w2o, bool reverseOrientation,
     int nTriangles, const int *vertexIndices, int nVertices, const Point3f *p,
     const Vector3f *s, const Normal3f *n, const Point2f *uv,
-    const std::shared_ptr<Texture<Float>> &atex);
+    const std::shared_ptr<Texture<Float>> &alphaTexture,
+    const std::shared_ptr<Texture<Float>> &shadowAlphaTexture);
 std::vector<std::shared_ptr<Shape>> CreateTriangleMeshShape(
     const Transform *o2w, const Transform *w2o, bool reverseOrientation,
     const ParamSet &params,
     std::map<std::string, std::shared_ptr<Texture<Float>>> *floatTextures =
         nullptr);
+
+bool WritePlyFile(const std::string &filename, int nTriangles,
+                  const int *vertexIndices, int nVertices, const Point3f *P,
+                  const Vector3f *S, const Normal3f *N, const Point2f *UV);
 
 #endif  // PBRT_SHAPES_TRIANGLE_H

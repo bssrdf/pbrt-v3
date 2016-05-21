@@ -1,6 +1,6 @@
 
 /*
-    pbrt source code is Copyright(c) 1998-2015
+    pbrt source code is Copyright(c) 1998-2016
                         Matt Pharr, Greg Humphreys, and Wenzel Jakob.
 
     This file is part of pbrt.
@@ -37,7 +37,6 @@
 
 #ifndef PBRT_SHAPES_CURVE_H
 #define PBRT_SHAPES_CURVE_H
-#include "stdafx.h"
 
 // shapes/curve.h*
 #include "shape.h"
@@ -51,8 +50,8 @@ struct CurveCommon {
     CurveCommon(const Point3f c[4], Float w0, Float w1, CurveType type,
                 const Normal3f *norm);
     const CurveType type;
-    const Point3f cpObj[4];
-    const Float width[2];
+    Point3f cpObj[4];
+    Float width[2];
     Normal3f n[2];
     Float normalAngle, invSinNormalAngle;
 };

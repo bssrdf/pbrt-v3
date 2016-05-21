@@ -1,6 +1,6 @@
 
 /*
-    pbrt source code is Copyright(c) 1998-2015
+    pbrt source code is Copyright(c) 1998-2016
                         Matt Pharr, Greg Humphreys, and Wenzel Jakob.
 
     This file is part of pbrt.
@@ -30,7 +30,6 @@
 
  */
 
-#include "stdafx.h"
 
 // materials/uber.cpp*
 #include "materials/uber.h"
@@ -50,10 +49,10 @@ void UberMaterial::ComputeScatteringFunctions(SurfaceInteraction *si,
     Float e = eta->Evaluate(*si);
 
     Spectrum op = opacity->Evaluate(*si).Clamp();
-    if (op != Spectrum(1.f)) {
+    Spectrum t = (-op + Spectrum(1.f)).Clamp();
+    if (!t.IsBlack()) {
         si->bsdf = ARENA_ALLOC(arena, BSDF)(*si, 1.f);
-        BxDF *tr = ARENA_ALLOC(arena, SpecularTransmission)(-op + Spectrum(1.f),
-                                                            1.f, 1.f, mode);
+        BxDF *tr = ARENA_ALLOC(arena, SpecularTransmission)(t, 1.f, 1.f, mode);
         si->bsdf->Add(tr);
     } else
         si->bsdf = ARENA_ALLOC(arena, BSDF)(*si, e);

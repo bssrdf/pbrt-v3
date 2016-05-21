@@ -1,6 +1,6 @@
 
 /*
-    pbrt source code is Copyright(c) 1998-2015
+    pbrt source code is Copyright(c) 1998-2016
                         Matt Pharr, Greg Humphreys, and Wenzel Jakob.
 
     This file is part of pbrt.
@@ -37,14 +37,12 @@
 
 #ifndef PBRT_CORE_RNG_H
 #define PBRT_CORE_RNG_H
-#include "stdafx.h"
 
 // core/rng.h*
 #include "pbrt.h"
 
 // Random Number Declarations
-#ifdef PBRT_IS_MSVC
-// sadly, MSVC2008 (at least) doesn't support hexadecimal fp constants...
+#ifndef PBRT_HAVE_HEX_FP_CONSTANTS
 static const Float OneMinusEpsilon = 0.9999999403953552f;
 #else
 #ifdef PBRT_FLOAT_IS_DOUBLE
@@ -71,11 +69,11 @@ class RNG {
         }
     }
     Float UniformFloat() {
-#ifdef PBRT_IS_MSVC
+#ifndef PBRT_HAVE_HEX_FP_CONSTANTS
         return std::min(OneMinusEpsilon,
-                        UniformUInt32() * 2.3283064365386963e-10f);
+                        Float(UniformUInt32() * 2.3283064365386963e-10f));
 #else
-        return std::min(OneMinusEpsilon, UniformUInt32() * 0x1p-32f);
+        return std::min(OneMinusEpsilon, Float(UniformUInt32() * 0x1p-32f));
 #endif
     }
     template <typename Iterator>

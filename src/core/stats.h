@@ -1,6 +1,6 @@
 
 /*
-    pbrt source code is Copyright(c) 1998-2015
+    pbrt source code is Copyright(c) 1998-2016
                         Matt Pharr, Greg Humphreys, and Wenzel Jakob.
 
     This file is part of pbrt.
@@ -37,7 +37,6 @@
 
 #ifndef PBRT_CORE_STATS_H
 #define PBRT_CORE_STATS_H
-#include "stdafx.h"
 
 // core/stats.h*
 #include "pbrt.h"
@@ -176,7 +175,7 @@ static const char *ProfNames[] = {
     "MIPMap::Lookup() (EWA)",
 };
 
-extern thread_local uint32_t profilerState;
+extern PBRT_THREAD_LOCAL uint32_t profilerState;
 inline uint32_t CurrentProfilerState() { return profilerState; }
 class ProfilePhase {
   public:
@@ -203,27 +202,38 @@ void ReportProfilerResults(FILE *dest);
 
 // Statistics Macros
 #define STAT_COUNTER(title, var)                           \
-    static thread_local int64_t var;                       \
+    static PBRT_THREAD_LOCAL int64_t var;                  \
     static void STATS_FUNC##var(StatsAccumulator &accum) { \
         accum.ReportCounter(title, var);                   \
         var = 0;                                           \
     }                                                      \
     static StatRegisterer STATS_REG##var(STATS_FUNC##var)
 #define STAT_MEMORY_COUNTER(title, var)                    \
-    static thread_local int64_t var;                       \
+    static PBRT_THREAD_LOCAL int64_t var;                  \
     static void STATS_FUNC##var(StatsAccumulator &accum) { \
         accum.ReportMemoryCounter(title, var);             \
         var = 0;                                           \
     }                                                      \
     static StatRegisterer STATS_REG##var(STATS_FUNC##var)
 
+// Work around lack of support for constexpr in VS2013.
+#ifdef PBRT_IS_MSVC2013
+#define STATS_INT64_T_MIN LLONG_MAX
+#define STATS_INT64_T_MAX _I64_MIN
+#define STATS_DBL_T_MIN DBL_MAX
+#define STATS_DBL_T_MAX -DBL_MAX
+#else
+#define STATS_INT64_T_MIN std::numeric_limits<int64_t>::max()
+#define STATS_INT64_T_MAX std::numeric_limits<int64_t>::lowest()
+#define STATS_DBL_T_MIN std::numeric_limits<double>::max()
+#define STATS_DBL_T_MAX std::numeric_limits<double>::lowest()
+#endif
+
 #define STAT_INT_DISTRIBUTION(title, var)                                  \
-    static thread_local int64_t var##sum;                                  \
-    static thread_local int64_t var##count;                                \
-    static thread_local int64_t var##min =                                 \
-        std::numeric_limits<int64_t>::max();                               \
-    static thread_local int64_t var##max =                                 \
-        std::numeric_limits<int64_t>::lowest();                            \
+    static PBRT_THREAD_LOCAL int64_t var##sum;                             \
+    static PBRT_THREAD_LOCAL int64_t var##count;                           \
+    static PBRT_THREAD_LOCAL int64_t var##min = (STATS_INT64_T_MIN);       \
+    static PBRT_THREAD_LOCAL int64_t var##max = (STATS_INT64_T_MAX);       \
     static void STATS_FUNC##var(StatsAccumulator &accum) {                 \
         accum.ReportIntDistribution(title, var##sum, var##count, var##min, \
                                     var##max);                             \
@@ -234,20 +244,19 @@ void ReportProfilerResults(FILE *dest);
     }                                                                      \
     static StatRegisterer STATS_REG##var(STATS_FUNC##var)
 
-#define STAT_FLOAT_DISTRIBUTION(title, var)                                   \
-    static thread_local double var##sum;                                      \
-    static thread_local int64_t var##count;                                   \
-    static thread_local double var##min = std::numeric_limits<double>::max(); \
-    static thread_local double var##max =                                     \
-        std::numeric_limits<double>::lowest();                                \
-    static void STATS_FUNC##var(StatsAccumulator &accum) {                    \
-        accum.ReportFloatDistribution(title, var##sum, var##count, var##min,  \
-                                      var##max);                              \
-        var##sum = 0;                                                         \
-        var##count = 0;                                                       \
-        var##min = std::numeric_limits<double>::max();                        \
-        var##max = std::numeric_limits<double>::lowest();                     \
-    }                                                                         \
+#define STAT_FLOAT_DISTRIBUTION(title, var)                                  \
+    static PBRT_THREAD_LOCAL double var##sum;                                \
+    static PBRT_THREAD_LOCAL int64_t var##count;                             \
+    static PBRT_THREAD_LOCAL double var##min = (STATS_DBL_T_MIN);            \
+    static PBRT_THREAD_LOCAL double var##max = (STATS_DBL_T_MAX);            \
+    static void STATS_FUNC##var(StatsAccumulator &accum) {                   \
+        accum.ReportFloatDistribution(title, var##sum, var##count, var##min, \
+                                      var##max);                             \
+        var##sum = 0;                                                        \
+        var##count = 0;                                                      \
+        var##min = std::numeric_limits<double>::max();                       \
+        var##max = std::numeric_limits<double>::lowest();                    \
+    }                                                                        \
     static StatRegisterer STATS_REG##var(STATS_FUNC##var)
 
 #define ReportValue(var, value)                                   \
@@ -259,7 +268,7 @@ void ReportProfilerResults(FILE *dest);
     } while (0)
 
 #define STAT_PERCENT(title, numVar, denomVar)                 \
-    static thread_local int64_t numVar, denomVar;             \
+    static PBRT_THREAD_LOCAL int64_t numVar, denomVar;        \
     static void STATS_FUNC##numVar(StatsAccumulator &accum) { \
         accum.ReportPercentage(title, numVar, denomVar);      \
         numVar = denomVar = 0;                                \
@@ -267,7 +276,7 @@ void ReportProfilerResults(FILE *dest);
     static StatRegisterer STATS_REG##numVar(STATS_FUNC##numVar)
 
 #define STAT_RATIO(title, numVar, denomVar)                   \
-    static thread_local int64_t numVar, denomVar;             \
+    static PBRT_THREAD_LOCAL int64_t numVar, denomVar;        \
     static void STATS_FUNC##numVar(StatsAccumulator &accum) { \
         accum.ReportRatio(title, numVar, denomVar);           \
         numVar = denomVar = 0;                                \
@@ -293,7 +302,7 @@ class StatTimer {
 };
 
 #define STAT_TIMER(title, var)                             \
-    static thread_local uint64_t var;                      \
+    static PBRT_THREAD_LOCAL uint64_t var;                 \
     static void STATS_FUNC##var(StatsAccumulator &accum) { \
         accum.ReportTimer(title, var);                     \
         var = 0;                                           \

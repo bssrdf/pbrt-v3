@@ -1,6 +1,6 @@
 
 /*
-    pbrt source code is Copyright(c) 1998-2015
+    pbrt source code is Copyright(c) 1998-2016
                         Matt Pharr, Greg Humphreys, and Wenzel Jakob.
 
     This file is part of pbrt.
@@ -30,7 +30,6 @@
 
  */
 
-#include "stdafx.h"
 
 // integrators/sppm.cpp*
 #include "integrators/sppm.h"
@@ -138,8 +137,8 @@ void SPPMIntegrator::Render(const Scene &scene) {
         std::vector<MemoryArena> perThreadArenas(MaxThreadIndex());
         {
             StatTimer timer(&hitPointTimer);
-            ParallelFor([&](Point2i tile) {
-                MemoryArena &arena = perThreadArenas[threadIndex];
+            ParallelFor2D([&](Point2i tile) {
+                MemoryArena &arena = perThreadArenas[ThreadIndex];
                 // Follow camera paths for _tile_ in image for SPPM
                 int tileIndex = tile.y * nTiles.x + tile.x;
                 std::unique_ptr<Sampler> tileSampler = sampler.Clone(tileIndex);
@@ -269,7 +268,7 @@ void SPPMIntegrator::Render(const Scene &scene) {
         {
             StatTimer timer(&gridConstructionTimer);
             ParallelFor([&](int pixelIndex) {
-                MemoryArena &arena = perThreadArenas[threadIndex];
+                MemoryArena &arena = perThreadArenas[ThreadIndex];
                 SPPMPixel &pixel = pixels[pixelIndex];
                 if (!pixel.vp.beta.IsBlack()) {
                     // Add pixel's visible point to applicable grid cells
@@ -307,7 +306,7 @@ void SPPMIntegrator::Render(const Scene &scene) {
             StatTimer timer(&photonTimer);
             std::vector<MemoryArena> photonShootArenas(MaxThreadIndex());
             ParallelFor([&](int photonIndex) {
-                MemoryArena &arena = photonShootArenas[threadIndex];
+                MemoryArena &arena = photonShootArenas[ThreadIndex];
                 // Follow photon path for _photonIndex_
                 uint64_t haltonIndex =
                     (uint64_t)iter * (uint64_t)photonsPerIteration +
@@ -333,13 +332,13 @@ void SPPMIntegrator::Render(const Scene &scene) {
 
                 // Generate _photonRay_ from light source and initialize _beta_
                 RayDifferential photonRay;
-                Normal3f Nl;
+                Normal3f nLight;
                 Float pdfPos, pdfDir;
                 Spectrum Le =
                     light->Sample_Le(uLight0, uLight1, uLightTime, &photonRay,
-                                     &Nl, &pdfPos, &pdfDir);
+                                     &nLight, &pdfPos, &pdfDir);
                 if (pdfPos == 0 || pdfDir == 0 || Le.IsBlack()) return;
-                Spectrum beta = (AbsDot(Nl, photonRay.d) * Le) /
+                Spectrum beta = (AbsDot(nLight, photonRay.d) * Le) /
                                 (lightPdf * pdfPos * pdfDir);
                 if (beta.IsBlack()) return;
 
@@ -405,11 +404,9 @@ void SPPMIntegrator::Render(const Scene &scene) {
                         beta * fr * AbsDot(wi, isect.shading.n) / pdf;
 
                     // Possibly terminate photon path with Russian roulette
-                    Float continueProb =
-                        std::min((Float)1, bnew.y() / beta.y());
-                    if (RadicalInverse(haltonDim++, haltonIndex) > continueProb)
-                        break;
-                    beta = bnew / continueProb;
+                    Float q = std::max((Float)0, 1 - bnew.y() / beta.y());
+                    if (RadicalInverse(haltonDim++, haltonIndex) < q) break;
+                    beta = bnew / (1 - q);
                     photonRay = (RayDifferential)isect.SpawnRay(wi);
                 }
                 arena.Reset();
@@ -421,7 +418,7 @@ void SPPMIntegrator::Render(const Scene &scene) {
         // Update pixel values from this pass's photons
         {
             StatTimer timer(&statsUpdateTimer);
-            for (int i = 0; i < nPixels; ++i) {
+            ParallelFor([&](int i) {
                 SPPMPixel &p = pixels[i];
                 if (p.M > 0) {
                     // Update pixel photon count, search radius, and $\tau$ from
@@ -443,7 +440,7 @@ void SPPMIntegrator::Render(const Scene &scene) {
                 // Reset _VisiblePoint_ in pixel
                 p.vp.beta = 0.;
                 p.vp.bsdf = nullptr;
-            }
+            }, nPixels, 4096);
         }
 
         // Periodically store SPPM image in film and write image

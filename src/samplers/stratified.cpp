@@ -1,6 +1,6 @@
 
 /*
-    pbrt source code is Copyright(c) 1998-2015
+    pbrt source code is Copyright(c) 1998-2016
                         Matt Pharr, Greg Humphreys, and Wenzel Jakob.
 
     This file is part of pbrt.
@@ -30,7 +30,6 @@
 
  */
 
-#include "stdafx.h"
 
 // samplers/stratified.cpp*
 #include "samplers/stratified.h"
@@ -79,5 +78,5 @@ StratifiedSampler *CreateStratifiedSampler(const ParamSet &params) {
     int ysamp = params.FindOneInt("ysamples", 4);
     int sd = params.FindOneInt("dimensions", 4);
     if (PbrtOptions.quickRender) xsamp = ysamp = 1;
-    return new StratifiedSampler(xsamp, ysamp, sd, jitter);
+    return new StratifiedSampler(xsamp, ysamp, jitter, sd);
 }

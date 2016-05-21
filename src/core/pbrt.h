@@ -1,6 +1,6 @@
 
 /*
-    pbrt source code is Copyright(c) 1998-2015
+    pbrt source code is Copyright(c) 1998-2016
                         Matt Pharr, Greg Humphreys, and Wenzel Jakob.
 
     This file is part of pbrt.
@@ -37,23 +37,9 @@
 
 #ifndef PBRT_CORE_PBRT_H
 #define PBRT_CORE_PBRT_H
-#include "stdafx.h"
 
 // core/pbrt.h*
-#if defined(_WIN32) || defined(_WIN64)
-#define PBRT_IS_WINDOWS
-#if defined(__MINGW32__)  // Defined for both 32 bit/64 bit MinGW
-#define PBRT_IS_MINGW
-#elif defined(_MSC_VER)
-#define PBRT_IS_MSVC
-#endif
-#elif defined(__linux__)
-#define PBRT_IS_LINUX
-#elif defined(__APPLE__)
-#define PBRT_IS_OSX
-#elif defined(__OpenBSD__)
-#define PBRT_IS_OPENBSD
-#endif
+#include "port.h"
 
 // Global Include Files
 #include <type_traits>
@@ -66,11 +52,10 @@
 #include <string>
 #include <vector>
 #include "error.h"
-#if !defined(PBRT_IS_OSX) && !defined(PBRT_IS_OPENBSD)
+#ifdef PBRT_HAVE_MALLOC_H
 #include <malloc.h>  // for _alloca, memalign
 #endif
-#if !defined(PBRT_IS_WINDOWS) && !defined(PBRT_IS_OSX) && \
-    !defined(PBRT_IS_OPENBSD)
+#ifdef PBRT_HAVE_ALLOCA_H
 #include <alloca.h>
 #endif
 #include <assert.h>
@@ -83,15 +68,11 @@
 #include <intrin.h>
 #pragma warning(disable : 4305)  // double constant assigned to float
 #pragma warning(disable : 4244)  // int -> float conversion
-#pragma warning(disable : 4267)  // size_t -> unsigned int conversion
-#define constexpr const
+#pragma warning(disable : 4843)  // double -> float conversion
 #endif
 
 // Global Macros
 #define ALLOCA(TYPE, COUNT) (TYPE *) alloca((COUNT) * sizeof(TYPE))
-#ifndef PBRT_IS_MSVC
-#define thread_local __thread
-#endif
 
 // Global Forward Declarations
 class Scene;
@@ -169,6 +150,7 @@ struct Options {
     int nThreads = 0;
     bool quickRender = false;
     bool quiet = false, verbose = false;
+    bool cat = false, toPly = false;
     std::string imageFile;
 };
 
@@ -180,13 +162,13 @@ class TextureParams;
 #define MaxFloat std::numeric_limits<Float>::max()
 #define Infinity std::numeric_limits<Float>::infinity()
 #else
-static constexpr Float MaxFloat = std::numeric_limits<Float>::max();
-static constexpr Float Infinity = std::numeric_limits<Float>::infinity();
+static PBRT_CONSTEXPR Float MaxFloat = std::numeric_limits<Float>::max();
+static PBRT_CONSTEXPR Float Infinity = std::numeric_limits<Float>::infinity();
 #endif
 #ifdef _MSC_VER
 #define MachineEpsilon (std::numeric_limits<Float>::epsilon() * 0.5)
 #else
-static constexpr Float MachineEpsilon =
+static PBRT_CONSTEXPR Float MachineEpsilon =
     std::numeric_limits<Float>::epsilon() * 0.5;
 #endif
 const Float ShadowEpsilon = 0.0001f;
@@ -277,7 +259,7 @@ inline double NextFloatDown(double v, int delta = 1) {
     return BitsToFloat(ui);
 }
 
-inline constexpr Float gamma(int n) {
+inline Float gamma(int n) {
     return (n * MachineEpsilon) / (1 - n * MachineEpsilon);
 }
 
@@ -413,53 +395,53 @@ inline bool Quadratic(Float a, Float b, Float c, Float *t0, Float *t1) {
 
 inline Float ErfInv(Float x) {
     Float w, p;
-    x = Clamp(x, Float(-.99999), Float(.99999));
-    w = -std::log((1.0 - x) * (1.0 + x));
-    if (w < 5.000000) {
-        w = w - 2.500000;
-        p = 2.81022636e-08;
-        p = 3.43273939e-07 + p * w;
-        p = -3.5233877e-06 + p * w;
-        p = -4.39150654e-06 + p * w;
-        p = 0.00021858087 + p * w;
-        p = -0.00125372503 + p * w;
-        p = -0.00417768164 + p * w;
-        p = 0.246640727 + p * w;
-        p = 1.50140941 + p * w;
+    x = Clamp(x, -.99999f, .99999f);
+    w = -std::log((1 - x) * (1 + x));
+    if (w < 5) {
+        w = w - 2.5f;
+        p = 2.81022636e-08f;
+        p = 3.43273939e-07f + p * w;
+        p = -3.5233877e-06f + p * w;
+        p = -4.39150654e-06f + p * w;
+        p = 0.00021858087f + p * w;
+        p = -0.00125372503f + p * w;
+        p = -0.00417768164f + p * w;
+        p = 0.246640727f + p * w;
+        p = 1.50140941f + p * w;
     } else {
-        w = std::sqrt(w) - 3.000000;
-        p = -0.000200214257;
-        p = 0.000100950558 + p * w;
-        p = 0.00134934322 + p * w;
-        p = -0.00367342844 + p * w;
-        p = 0.00573950773 + p * w;
-        p = -0.0076224613 + p * w;
-        p = 0.00943887047 + p * w;
-        p = 1.00167406 + p * w;
-        p = 2.83297682 + p * w;
+        w = std::sqrt(w) - 3;
+        p = -0.000200214257f;
+        p = 0.000100950558f + p * w;
+        p = 0.00134934322f + p * w;
+        p = -0.00367342844f + p * w;
+        p = 0.00573950773f + p * w;
+        p = -0.0076224613f + p * w;
+        p = 0.00943887047f + p * w;
+        p = 1.00167406f + p * w;
+        p = 2.83297682f + p * w;
     }
     return p * x;
 }
 
 inline Float Erf(Float x) {
     // constants
-    Float a1 = 0.254829592;
-    Float a2 = -0.284496736;
-    Float a3 = 1.421413741;
-    Float a4 = -1.453152027;
-    Float a5 = 1.061405429;
-    Float p = 0.3275911;
+    Float a1 = 0.254829592f;
+    Float a2 = -0.284496736f;
+    Float a3 = 1.421413741f;
+    Float a4 = -1.453152027f;
+    Float a5 = 1.061405429f;
+    Float p = 0.3275911f;
 
     // Save the sign of x
     int sign = 1;
     if (x < 0) sign = -1;
-    x = fabs(x);
+    x = std::abs(x);
 
     // A&S formula 7.1.26
-    Float t = 1.0 / (1.0 + p * x);
+    Float t = 1 / (1 + p * x);
     Float y =
-        1.0 -
-        (((((a5 * t + a4) * t) + a3) * t + a2) * t + a1) * t * exp(-x * x);
+        1 -
+        (((((a5 * t + a4) * t) + a3) * t + a2) * t + a1) * t * std::exp(-x * x);
 
     return sign * y;
 }

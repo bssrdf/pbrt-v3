@@ -1,6 +1,6 @@
 
 /*
-    pbrt source code is Copyright(c) 1998-2015
+    pbrt source code is Copyright(c) 1998-2016
                         Matt Pharr, Greg Humphreys, and Wenzel Jakob.
 
     This file is part of pbrt.
@@ -30,7 +30,6 @@
 
  */
 
-#include "stdafx.h"
 
 // core/texture.cpp*
 #include "texture.h"
@@ -47,7 +46,7 @@ inline Float Grad(int x, int y, int z, Float dx, Float dy, Float dz);
 inline Float NoiseWeight(Float t);
 
 // Perlin Noise Data
-static constexpr int NoisePermSize = 256;
+static PBRT_CONSTEXPR int NoisePermSize = 256;
 static int NoisePerm[2 * NoisePermSize] = {
     151, 160, 137, 91, 90, 15, 131, 13, 201, 95, 96, 53, 194, 233, 7, 225, 140,
     36, 103, 30, 69, 142,
@@ -84,6 +83,9 @@ static int NoisePerm[2 * NoisePermSize] = {
     243, 141, 128, 195, 78, 66, 215, 61, 156, 180};
 
 // Texture Method Definitions
+TextureMapping2D::~TextureMapping2D() { }
+TextureMapping3D::~TextureMapping3D() { }
+
 UVMapping2D::UVMapping2D(Float su, Float sv, Float du, Float dv)
     : su(su), sv(sv), du(du), dv(dv) {}
 Point2f UVMapping2D::Map(const SurfaceInteraction &si, Vector2f *dstdx,

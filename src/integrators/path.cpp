@@ -1,6 +1,6 @@
 
 /*
-    pbrt source code is Copyright(c) 1998-2015
+    pbrt source code is Copyright(c) 1998-2016
                         Matt Pharr, Greg Humphreys, and Wenzel Jakob.
 
     This file is part of pbrt.
@@ -30,7 +30,6 @@
 
  */
 
-#include "stdafx.h"
 
 // integrators/path.cpp*
 #include "integrators/path.h"
@@ -40,6 +39,9 @@
 #include "bssrdf.h"
 #include "stats.h"
 
+STAT_PERCENT("Integrator/Zero-radiance paths", zeroRadiancePaths, totalPaths);
+STAT_INT_DISTRIBUTION("Integrator/Path length", pathLength);
+
 // PathIntegrator Method Definitions
 Spectrum PathIntegrator::Li(const RayDifferential &r, const Scene &scene,
                             Sampler &sampler, MemoryArena &arena,
@@ -48,7 +50,8 @@ Spectrum PathIntegrator::Li(const RayDifferential &r, const Scene &scene,
     Spectrum L(0.f), beta(1.f);
     RayDifferential ray(r);
     bool specularBounce = false;
-    for (int bounces = 0;; ++bounces) {
+    int bounces;
+    for (bounces = 0;; ++bounces) {
         // Find next path vertex and accumulate contribution
 
         // Intersect _ray_ with scene and store intersection in _isect_
@@ -76,8 +79,17 @@ Spectrum PathIntegrator::Li(const RayDifferential &r, const Scene &scene,
             continue;
         }
 
-        // Sample illumination from lights to find path contribution
-        L += beta * UniformSampleOneLight(isect, scene, arena, sampler);
+        // Sample illumination from lights to find path contribution.
+        // (But skip this for perfectly specular BSDFs.)
+        if (isect.bsdf->NumComponents(BxDFType(BSDF_ALL & ~BSDF_SPECULAR)) >
+            0) {
+            ++totalPaths;
+            Spectrum Ld =
+                beta * UniformSampleOneLight(isect, scene, arena, sampler);
+            if (Ld.IsBlack()) ++zeroRadiancePaths;
+            Assert(Ld.y() >= 0.f);
+            L += Ld;
+        }
 
         // Sample BSDF to get new path direction
         Vector3f wo = -ray.d, wi;
@@ -87,6 +99,7 @@ Spectrum PathIntegrator::Li(const RayDifferential &r, const Scene &scene,
                                           BSDF_ALL, &flags);
         if (f.IsBlack() || pdf == 0.f) break;
         beta *= f * AbsDot(wi, isect.shading.n) / pdf;
+        Assert(beta.y() >= 0.f);
         Assert(std::isinf(beta.y()) == false);
         specularBounce = (flags & BSDF_SPECULAR) != 0;
         ray = isect.SpawnRay(wi);
@@ -120,12 +133,13 @@ Spectrum PathIntegrator::Li(const RayDifferential &r, const Scene &scene,
 
         // Possibly terminate the path with Russian roulette
         if (bounces > 3) {
-            Float continueProbability = std::min((Float).5, beta.y());
-            if (sampler.Get1D() > continueProbability) break;
-            beta /= continueProbability;
+            Float q = std::max((Float).05, 1 - beta.y());
+            if (sampler.Get1D() < q) break;
+            beta /= 1 - q;
             Assert(std::isinf(beta.y()) == false);
         }
     }
+    ReportValue(pathLength, bounces);
     return L;
 }
 

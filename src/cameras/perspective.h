@@ -1,6 +1,6 @@
 
 /*
-    pbrt source code is Copyright(c) 1998-2015
+    pbrt source code is Copyright(c) 1998-2016
                         Matt Pharr, Greg Humphreys, and Wenzel Jakob.
 
     This file is part of pbrt.
@@ -37,7 +37,6 @@
 
 #ifndef PBRT_CAMERAS_PERSPECTIVE_H
 #define PBRT_CAMERAS_PERSPECTIVE_H
-#include "stdafx.h"
 
 // cameras/perspective.h*
 #include "pbrt.h"
@@ -55,7 +54,7 @@ class PerspectiveCamera : public ProjectiveCamera {
     Float GenerateRay(const CameraSample &sample, Ray *) const;
     Float GenerateRayDifferential(const CameraSample &sample,
                                   RayDifferential *ray) const;
-    Spectrum We(const Ray &ray, Point2f *pRaster = nullptr) const;
+    Spectrum We(const Ray &ray, Point2f *pRaster2 = nullptr) const;
     void Pdf_We(const Ray &ray, Float *pdfPos, Float *pdfDir) const;
     Spectrum Sample_Wi(const Interaction &ref, const Point2f &sample,
                        Vector3f *wi, Float *pdf, Point2f *pRaster,

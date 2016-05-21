@@ -1,6 +1,6 @@
 
 /*
-    pbrt source code is Copyright(c) 1998-2015
+    pbrt source code is Copyright(c) 1998-2016
                         Matt Pharr, Greg Humphreys, and Wenzel Jakob.
 
     This file is part of pbrt.
@@ -37,7 +37,6 @@
 
 #ifndef PBRT_CORE_INTERPOLATION_H
 #define PBRT_CORE_INTERPOLATION_H
-#include "stdafx.h"
 
 // core/interpolation.h*
 #include "pbrt.h"
@@ -46,7 +45,7 @@
 Float CatmullRom(int size, const Float *nodes, const Float *values, Float x);
 bool CatmullRomWeights(int size, const Float *nodes, Float x, int *offset,
                        Float *weights);
-Float SampleCatmullRom(int size, const Float *nodes, const Float *values,
+Float SampleCatmullRom(int size, const Float *nodes, const Float *f,
                        const Float *cdf, Float sample, Float *fval = nullptr,
                        Float *pdf = nullptr);
 Float SampleCatmullRom2D(int size1, int size2, const Float *nodes1,

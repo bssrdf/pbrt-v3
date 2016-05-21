@@ -1,6 +1,6 @@
 
 /*
-    pbrt source code is Copyright(c) 1998-2015
+    pbrt source code is Copyright(c) 1998-2016
                         Matt Pharr, Greg Humphreys, and Wenzel Jakob.
 
     This file is part of pbrt.
@@ -37,7 +37,6 @@
 
 #ifndef PBRT_CORE_REFLECTION_H
 #define PBRT_CORE_REFLECTION_H
-#include "stdafx.h"
 
 // core/reflection.h*
 #include "pbrt.h"
@@ -96,7 +95,7 @@ inline bool Refract(const Vector3f &wi, const Normal3f &n, Float eta,
                     Vector3f *wt) {
     // Compute $\cos \theta_\roman{t}$ using Snell's law
     Float cosThetaI = Dot(n, wi);
-    Float sin2ThetaI = std::max(0.f, 1.f - cosThetaI * cosThetaI);
+    Float sin2ThetaI = std::max(Float(0), Float(1 - cosThetaI * cosThetaI));
     Float sin2ThetaT = eta * eta * sin2ThetaI;
 
     // Handle total internal reflection for transmission
@@ -135,7 +134,7 @@ struct FourierBSDFTable {
     int *m;
     int *aOffset;
     Float *a;
-    Float *avg;
+    Float *a0;
     Float *cdf;
     Float *recip;
 
@@ -194,7 +193,7 @@ class BSDF {
     const Normal3f ns, ng;
     const Vector3f ss, ts;
     int nBxDFs = 0;
-    static constexpr int MaxBxDFs = 8;
+    static PBRT_CONSTEXPR int MaxBxDFs = 8;
     BxDF *bxdfs[MaxBxDFs];
     friend class MixMaterial;
 };

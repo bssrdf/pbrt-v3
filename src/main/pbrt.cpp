@@ -1,6 +1,6 @@
 
 /*
-    pbrt source code is Copyright(c) 1998-2015
+    pbrt source code is Copyright(c) 1998-2016
                         Matt Pharr, Greg Humphreys, and Wenzel Jakob.
 
     This file is part of pbrt.
@@ -30,7 +30,6 @@
 
  */
 
-#include "stdafx.h"
 
 // main/pbrt.cpp*
 #include "pbrt.h"
@@ -54,22 +53,29 @@ int main(int argc, char *argv[]) {
             options.quiet = true;
         else if (!strcmp(argv[i], "--verbose"))
             options.verbose = true;
+        else if (!strcmp(argv[i], "--cat"))
+            options.cat = true;
+        else if (!strcmp(argv[i], "--toply"))
+            options.toPly = true;
         else if (!strcmp(argv[i], "--help") || !strcmp(argv[i], "-h")) {
             printf(
                 "usage: pbrt [--nthreads n] [--outfile filename] [--quick] "
-                "[--quiet] "
-                "[--verbose] [--help] <filename.pbrt> ...\n");
+                "[--quiet] [--cat] [--toply] [--verbose] [--help] "
+                "<filename.pbrt> ...\n");
             return 0;
         } else
             filenames.push_back(argv[i]);
     }
 
     // Print welcome banner
-    if (!options.quiet) {
+    if (!options.quiet && !options.cat && !options.toPly) {
         printf("pbrt version 3 (built %s at %s) [Detected %d cores]\n",
                __DATE__, __TIME__, NumSystemCores());
+#ifndef NDEBUG
+        printf("*** DEBUG BUILD ***\n");
+#endif // !NDEBUG
         printf(
-            "Copyright (c)1998-2015 Matt Pharr, Greg Humphreys, and Wenzel "
+            "Copyright (c)1998-2016 Matt Pharr, Greg Humphreys, and Wenzel "
             "Jakob.\n");
         printf(
             "The source code to pbrt (but *not* the book contents) is covered "

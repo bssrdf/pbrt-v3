@@ -1,6 +1,6 @@
 
 /*
-    pbrt source code is Copyright(c) 1998-2015
+    pbrt source code is Copyright(c) 1998-2016
                         Matt Pharr, Greg Humphreys, and Wenzel Jakob.
 
     This file is part of pbrt.
@@ -37,10 +37,18 @@
 
 #ifndef PBRT_CORE_GEOMETRY_H
 #define PBRT_CORE_GEOMETRY_H
-#include "stdafx.h"
 
 // core/geometry.h*
 #include "pbrt.h"
+
+template <typename T>
+inline bool isNaN(const T x) {
+    return std::isnan(x);
+}
+template <>
+inline bool isNaN(const int x) {
+    return false;
+}
 
 // Vector Declarations
 template <typename T>
@@ -49,7 +57,7 @@ class Vector2 {
     // Vector2 Public Methods
     Vector2() { x = y = 0; }
     Vector2(T xx, T yy) : x(xx), y(yy) { Assert(!HasNaNs()); }
-    bool HasNaNs() const { return std::isnan(x) || std::isnan(y); }
+    bool HasNaNs() const { return isNaN(x) || isNaN(y); }
     explicit Vector2(const Point2<T> &p);
     explicit Vector2(const Point3<T> &p);
 #ifndef NDEBUG
@@ -96,21 +104,27 @@ class Vector2 {
     }
     bool operator==(const Vector2<T> &v) const { return x == v.x && y == v.y; }
     bool operator!=(const Vector2<T> &v) const { return x != v.x || y != v.y; }
-    Vector2<T> operator*(T f) const { return Vector2<T>(f * x, f * y); }
+    template <typename U>
+    Vector2<T> operator*(U f) const {
+        return Vector2<T>(f * x, f * y);
+    }
 
-    Vector2<T> &operator*=(T f) {
-        Assert(!std::isnan(f));
+    template <typename U>
+    Vector2<T> &operator*=(U f) {
+        Assert(!isNaN(f));
         x *= f;
         y *= f;
         return *this;
     }
-    Vector2<T> operator/(T f) const {
+    template <typename U>
+    Vector2<T> operator/(U f) const {
         Assert(f != 0);
         Float inv = (Float)1 / f;
         return Vector2<T>(x * inv, y * inv);
     }
 
-    Vector2<T> &operator/=(T f) {
+    template <typename U>
+    Vector2<T> &operator/=(U f) {
         Assert(f != 0);
         Float inv = (Float)1 / f;
         x *= inv;
@@ -154,9 +168,7 @@ class Vector3 {
     }
     Vector3() { x = y = z = 0; }
     Vector3(T x, T y, T z) : x(x), y(y), z(z) { Assert(!HasNaNs()); }
-    bool HasNaNs() const {
-        return std::isnan(x) || std::isnan(y) || std::isnan(z);
-    }
+    bool HasNaNs() const { return isNaN(x) || isNaN(y) || isNaN(z); }
     explicit Vector3(const Point3<T> &p);
 #ifndef NDEBUG
     // The default versions of these are fine for release builds; for debug
@@ -208,21 +220,27 @@ class Vector3 {
     bool operator!=(const Vector3<T> &v) const {
         return x != v.x || y != v.y || z != v.z;
     }
-    Vector3<T> operator*(T s) const { return Vector3<T>(s * x, s * y, s * z); }
-    Vector3<T> &operator*=(T s) {
-        Assert(!std::isnan(s));
+    template <typename U>
+    Vector3<T> operator*(U s) const {
+        return Vector3<T>(s * x, s * y, s * z);
+    }
+    template <typename U>
+    Vector3<T> &operator*=(U s) {
+        Assert(!isNaN(s));
         x *= s;
         y *= s;
         z *= s;
         return *this;
     }
-    Vector3<T> operator/(T f) const {
+    template <typename U>
+    Vector3<T> operator/(U f) const {
         Assert(f != 0);
         Float inv = (Float)1 / f;
         return Vector3<T>(x * inv, y * inv, z * inv);
     }
 
-    Vector3<T> &operator/=(T f) {
+    template <typename U>
+    Vector3<T> &operator/=(U f) {
         Assert(f != 0);
         Float inv = (Float)1 / f;
         x *= inv;
@@ -328,17 +346,23 @@ class Point2 {
         Assert(!p.HasNaNs());
         return Point2<T>(x + p.x, y + p.y);
     }
-    Point2<T> operator*(T f) const { return Point2<T>(f * x, f * y); }
-    Point2<T> &operator*=(T f) {
+    template <typename U>
+    Point2<T> operator*(U f) const {
+        return Point2<T>(f * x, f * y);
+    }
+    template <typename U>
+    Point2<T> &operator*=(U f) {
         x *= f;
         y *= f;
         return *this;
     }
-    Point2<T> operator/(T f) const {
+    template <typename U>
+    Point2<T> operator/(U f) const {
         Float inv = (Float)1 / f;
         return Point2<T>(inv * x, inv * y);
     }
-    Point2<T> &operator/=(T f) {
+    template <typename U>
+    Point2<T> &operator/=(U f) {
         Float inv = (Float)1 / f;
         x *= inv;
         y *= inv;
@@ -357,7 +381,7 @@ class Point2 {
     }
     bool operator==(const Point2<T> &p) const { return x == p.x && y == p.y; }
     bool operator!=(const Point2<T> &p) const { return x != p.x || y != p.y; }
-    bool HasNaNs() const { return std::isnan(x) || std::isnan(y); }
+    bool HasNaNs() const { return isNaN(x) || isNaN(y); }
 
     // Point2 Public Data
     T x, y;
@@ -435,18 +459,24 @@ class Point3 {
         Assert(!p.HasNaNs());
         return Point3<T>(x + p.x, y + p.y, z + p.z);
     }
-    Point3<T> operator*(T f) const { return Point3<T>(f * x, f * y, f * z); }
-    Point3<T> &operator*=(T f) {
+    template <typename U>
+    Point3<T> operator*(U f) const {
+        return Point3<T>(f * x, f * y, f * z);
+    }
+    template <typename U>
+    Point3<T> &operator*=(U f) {
         x *= f;
         y *= f;
         z *= f;
         return *this;
     }
-    Point3<T> operator/(T f) const {
+    template <typename U>
+    Point3<T> operator/(U f) const {
         Float inv = (Float)1 / f;
         return Point3<T>(inv * x, inv * y, inv * z);
     }
-    Point3<T> &operator/=(T f) {
+    template <typename U>
+    Point3<T> &operator/=(U f) {
         Float inv = (Float)1 / f;
         x *= inv;
         y *= inv;
@@ -472,9 +502,7 @@ class Point3 {
     bool operator!=(const Point3<T> &p) const {
         return x != p.x || y != p.y || z != p.z;
     }
-    bool HasNaNs() const {
-        return std::isnan(x) || std::isnan(y) || std::isnan(z);
-    }
+    bool HasNaNs() const { return isNaN(x) || isNaN(y) || isNaN(z); }
     Point3<T> operator-() const { return Point3<T>(-x, -y, -z); }
 
     // Point3 Public Data
@@ -518,24 +546,28 @@ class Normal3 {
         z -= n.z;
         return *this;
     }
-    bool HasNaNs() const {
-        return std::isnan(x) || std::isnan(y) || std::isnan(z);
+    bool HasNaNs() const { return isNaN(x) || isNaN(y) || isNaN(z); }
+    template <typename U>
+    Normal3<T> operator*(U f) const {
+        return Normal3<T>(f * x, f * y, f * z);
     }
-    Normal3<T> operator*(T f) const { return Normal3<T>(f * x, f * y, f * z); }
 
-    Normal3<T> &operator*=(T f) {
+    template <typename U>
+    Normal3<T> &operator*=(U f) {
         x *= f;
         y *= f;
         z *= f;
         return *this;
     }
-    Normal3<T> operator/(T f) const {
+    template <typename U>
+    Normal3<T> operator/(U f) const {
         Assert(f != 0);
         Float inv = (Float)1 / f;
         return Normal3<T>(x * inv, y * inv, z * inv);
     }
 
-    Normal3<T> &operator/=(T f) {
+    template <typename U>
+    Normal3<T> &operator/=(U f) {
         Assert(f != 0);
         Float inv = (Float)1 / f;
         x *= inv;
@@ -787,9 +819,7 @@ class Ray {
         Float time = 0.f, const Medium *medium = nullptr)
         : o(o), d(d), tMax(tMax), time(time), medium(medium) {}
     Point3f operator()(Float t) const { return o + d * t; }
-    bool HasNaNs() const {
-        return (o.HasNaNs() || d.HasNaNs() || std::isnan(tMax));
-    }
+    bool HasNaNs() const { return (o.HasNaNs() || d.HasNaNs() || isNaN(tMax)); }
     friend std::ostream &operator<<(std::ostream &os, const Ray &r) {
         os << "[o=" << r.o << ", d=" << r.d << ", tMax=" << r.tMax
            << ", time=" << r.time << "]";
@@ -840,8 +870,8 @@ inline Vector3<T>::Vector3(const Point3<T> &p)
     Assert(!HasNaNs());
 }
 
-template <typename T>
-inline Vector3<T> operator*(T s, const Vector3<T> &v) {
+template <typename T, typename U>
+inline Vector3<T> operator*(U s, const Vector3<T> &v) {
     return v * s;
 }
 template <typename T>
@@ -946,8 +976,8 @@ Vector2<T>::Vector2(const Point3<T> &p)
     Assert(!HasNaNs());
 }
 
-template <typename T>
-inline Vector2<T> operator*(T f, const Vector2<T> &v) {
+template <typename T, typename U>
+inline Vector2<T> operator*(U f, const Vector2<T> &v) {
     return v * f;
 }
 template <typename T>
@@ -981,8 +1011,8 @@ inline Float DistanceSquared(const Point3<T> &p1, const Point3<T> &p2) {
     return (p1 - p2).LengthSquared();
 }
 
-template <typename T>
-inline Point3<T> operator*(Float f, const Point3<T> &p) {
+template <typename T, typename U>
+inline Point3<T> operator*(U f, const Point3<T> &p) {
     Assert(!p.HasNaNs());
     return p * f;
 }
@@ -1029,8 +1059,8 @@ inline Float DistanceSquared(const Point2<T> &p1, const Point2<T> &p2) {
     return (p1 - p2).LengthSquared();
 }
 
-template <typename T>
-inline Point2<T> operator*(T f, const Point2<T> &p) {
+template <typename T, typename U>
+inline Point2<T> operator*(U f, const Point2<T> &p) {
     Assert(!p.HasNaNs());
     return p * f;
 }
@@ -1065,8 +1095,8 @@ Point3<T> Permute(const Point3<T> &p, int x, int y, int z) {
     return Point3<T>(p[x], p[y], p[z]);
 }
 
-template <typename T>
-inline Normal3<T> operator*(T f, const Normal3<T> &n) {
+template <typename T, typename U>
+inline Normal3<T> operator*(U f, const Normal3<T> &n) {
     return Normal3<T>(f * n.x, f * n.y, f * n.z);
 }
 

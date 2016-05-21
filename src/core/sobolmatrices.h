@@ -1,6 +1,6 @@
 
 /*
-    pbrt source code is Copyright(c) 1998-2015
+    pbrt source code is Copyright(c) 1998-2016
                         Matt Pharr, Greg Humphreys, and Wenzel Jakob.
 
     This file is part of pbrt.
@@ -37,14 +37,13 @@
 
 #ifndef PBRT_CORE_SOBOLMATRICES_H
 #define PBRT_CORE_SOBOLMATRICES_H
-#include "stdafx.h"
 
 // core/sobolmatrices.h*
 #include "pbrt.h"
 
 // Sobol Matrix Declarations
-static constexpr int NumSobolDimensions = 1024;
-static constexpr int SobolMatrixSize = 52;
+static PBRT_CONSTEXPR int NumSobolDimensions = 1024;
+static PBRT_CONSTEXPR int SobolMatrixSize = 52;
 extern const uint32_t SobolMatrices32[NumSobolDimensions * SobolMatrixSize];
 extern const uint64_t SobolMatrices64[NumSobolDimensions * SobolMatrixSize];
 extern const uint64_t VdCSobolMatrices[][SobolMatrixSize];

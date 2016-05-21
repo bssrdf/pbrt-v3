@@ -1,6 +1,6 @@
 
 /*
-    pbrt source code is Copyright(c) 1998-2015
+    pbrt source code is Copyright(c) 1998-2016
                         Matt Pharr, Greg Humphreys, and Wenzel Jakob.
 
     This file is part of pbrt.
@@ -30,7 +30,6 @@
 
  */
 
-#include "stdafx.h"
 
 // core/interpolation.cpp*
 #include "interpolation.h"
@@ -101,26 +100,25 @@ bool CatmullRomWeights(int size, const Float *nodes, Float x, int *offset,
     return true;
 }
 
-Float SampleCatmullRom(int n, const Float *x, const Float *values,
+Float SampleCatmullRom(int n, const Float *x, const Float *f,
                        const Float *F, Float u, Float *fval, Float *pdf) {
     // Map _u_ to a spline interval by inverting _F_
-    Float maximum = F[n - 1];
-    u *= maximum;
+    u *= F[n - 1];
     int i = FindInterval(n, [&](int i) { return F[i] <= u; });
 
     // Look up $x_i$ and function values of spline segment _i_
     Float x0 = x[i], x1 = x[i + 1];
-    Float f0 = values[i], f1 = values[i + 1];
+    Float f0 = f[i], f1 = f[i + 1];
     Float width = x1 - x0;
 
     // Approximate derivatives using finite differences
     Float d0, d1;
     if (i > 0)
-        d0 = width * (f1 - values[i - 1]) / (x1 - x[i - 1]);
+        d0 = width * (f1 - f[i - 1]) / (x1 - x[i - 1]);
     else
         d0 = f1 - f0;
     if (i + 2 < n)
-        d1 = width * (values[i + 2] - f0) / (x[i + 2] - x0);
+        d1 = width * (f[i + 2] - f0) / (x[i + 2] - x0);
     else
         d1 = f1 - f0;
 
@@ -166,7 +164,7 @@ Float SampleCatmullRom(int n, const Float *x, const Float *values,
 
     // Return the sample position and function value
     if (fval) *fval = fhat;
-    if (pdf) *pdf = fhat / maximum;
+    if (pdf) *pdf = fhat / F[n - 1];
     return x0 + width * t;
 }
 
@@ -322,11 +320,11 @@ Float InvertCatmullRom(int n, const Float *x, const Float *values, Float u) {
         // Compute powers of _t_
         Float t2 = t * t, t3 = t2 * t;
 
-        // Set _Fhat_ using Equation (\ref{eq:cubicspline-as-basisfunctions})
+        // Set _Fhat_ using Equation (8.27)
         Fhat = (2 * t3 - 3 * t2 + 1) * f0 + (-2 * t3 + 3 * t2) * f1 +
                (t3 - 2 * t2 + t) * d0 + (t3 - t2) * d1;
 
-        // Set _fhat_ using Equation (\ref{eq:cubicspline-derivative})
+        // Set _fhat_ using Equation (not present)
         fhat = (6 * t2 - 6 * t) * f0 + (-6 * t2 + 6 * t) * f1 +
                (3 * t2 - 4 * t + 1) * d0 + (3 * t2 - 2 * t) * d1;
 
@@ -376,14 +374,14 @@ Float SampleFourier(const Float *ak, const Float *recip, int m, Float u,
 
         // Initialize sine and cosine iterates
         double cosPhi = std::cos(phi);
-        double sinPhi = std::sqrt(1 - cosPhi * cosPhi);
+        double sinPhi = std::sqrt(std::max(0., 1 - cosPhi * cosPhi));
         double cosPhiPrev = cosPhi, cosPhiCur = 1;
         double sinPhiPrev = -sinPhi, sinPhiCur = 0;
 
         // Initialize _F_ and _f_ with the first series term
         F = ak[0] * phi;
         f = ak[0];
-        for (int j = 1; j < m; ++j) {
+        for (int k = 1; k < m; ++k) {
             // Compute next sine and cosine iterates
             double sinPhiNext = 2 * cosPhi * sinPhiCur - sinPhiPrev;
             double cosPhiNext = 2 * cosPhi * cosPhiCur - cosPhiPrev;
@@ -393,8 +391,8 @@ Float SampleFourier(const Float *ak, const Float *recip, int m, Float u,
             cosPhiCur = cosPhiNext;
 
             // Add the next series term to _F_ and _f_
-            F += ak[j] * recip[j] * sinPhiNext;
-            f += ak[j] * cosPhiNext;
+            F += ak[k] * recip[k] * sinPhiNext;
+            f += ak[k] * cosPhiNext;
         }
         F -= u * ak[0] * Pi;
 

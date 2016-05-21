@@ -1,6 +1,6 @@
 
 /*
-    pbrt source code is Copyright(c) 1998-2015
+    pbrt source code is Copyright(c) 1998-2016
                         Matt Pharr, Greg Humphreys, and Wenzel Jakob.
 
     This file is part of pbrt.
@@ -37,7 +37,6 @@
 
 #ifndef PBRT_CORE_SAMPLING_H
 #define PBRT_CORE_SAMPLING_H
-#include "stdafx.h"
 
 // core/sampling.h*
 #include "pbrt.h"
@@ -71,8 +70,6 @@ struct Distribution1D {
         // Find surrounding CDF segments and _offset_
         int offset = FindInterval(cdf.size(),
                                   [&](int index) { return cdf[index] <= u; });
-        int offset2 = std::upper_bound(cdf.begin(), cdf.end(), u) - cdf.begin();
-        offset2 = Clamp(offset2 - 1, 0, Count() - 1);
         if (off) *off = offset;
         // Compute offset along CDF segment
         Float du = u - cdf[offset];
@@ -91,8 +88,6 @@ struct Distribution1D {
         // Find surrounding CDF segments and _offset_
         int offset = FindInterval(cdf.size(),
                                   [&](int index) { return cdf[index] <= u; });
-        int offset2 = std::upper_bound(cdf.begin(), cdf.end(), u) - cdf.begin();
-        offset2 = Clamp(offset2 - 1, 0, Count() - 1);
         if (pdf) *pdf = func[offset] / (funcInt * Count());
         if (uRemapped)
             *uRemapped = (u - cdf[offset]) / (cdf[offset + 1] - cdf[offset]);

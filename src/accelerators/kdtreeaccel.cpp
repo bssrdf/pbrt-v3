@@ -1,6 +1,6 @@
 
 /*
-    pbrt source code is Copyright(c) 1998-2015
+    pbrt source code is Copyright(c) 1998-2016
                         Matt Pharr, Greg Humphreys, and Wenzel Jakob.
 
     This file is part of pbrt.
@@ -30,7 +30,6 @@
 
  */
 
-#include "stdafx.h"
 
 // accelerators/kdtreeaccel.cpp*
 #include "accelerators/kdtreeaccel.h"
@@ -270,7 +269,7 @@ bool KdTreeAccel::Intersect(const Ray &ray, SurfaceInteraction *isect) const {
 
     // Prepare to traverse kd-tree for ray
     Vector3f invDir(1 / ray.d.x, 1 / ray.d.y, 1 / ray.d.z);
-    constexpr int maxTodo = 64;
+    PBRT_CONSTEXPR int maxTodo = 64;
     KdToDo todo[maxTodo];
     int todoPos = 0;
 
@@ -355,7 +354,7 @@ bool KdTreeAccel::IntersectP(const Ray &ray) const {
 
     // Prepare to traverse kd-tree for ray
     Vector3f invDir(1 / ray.d.x, 1 / ray.d.y, 1 / ray.d.z);
-    constexpr int maxTodo = 64;
+    PBRT_CONSTEXPR int maxTodo = 64;
     KdToDo todo[maxTodo];
     int todoPos = 0;
     const KdAccelNode *node = &nodes[0];

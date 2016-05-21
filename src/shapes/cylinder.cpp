@@ -1,6 +1,6 @@
 
 /*
-    pbrt source code is Copyright(c) 1998-2015
+    pbrt source code is Copyright(c) 1998-2016
                         Matt Pharr, Greg Humphreys, and Wenzel Jakob.
 
     This file is part of pbrt.
@@ -30,7 +30,6 @@
 
  */
 
-#include "stdafx.h"
 
 // shapes/cylinder.cpp*
 #include "shapes/cylinder.h"
@@ -201,8 +200,8 @@ Float Cylinder::Area() const { return (zMax - zMin) * radius * phiMax; }
 
 Interaction Cylinder::Sample(const Point2f &u) const {
     Float z = Lerp(u[0], zMin, zMax);
-    Float t = u[1] * phiMax;
-    Point3f pObj = Point3f(radius * std::cos(t), radius * std::sin(t), z);
+    Float phi = u[1] * phiMax;
+    Point3f pObj = Point3f(radius * std::cos(phi), radius * std::sin(phi), z);
     Interaction it;
     it.n = Normalize((*ObjectToWorld)(Normal3f(pObj.x, pObj.y, 0)));
     if (reverseOrientation) it.n *= -1;

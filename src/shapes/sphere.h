@@ -1,6 +1,6 @@
 
 /*
-    pbrt source code is Copyright(c) 1998-2015
+    pbrt source code is Copyright(c) 1998-2016
                         Matt Pharr, Greg Humphreys, and Wenzel Jakob.
 
     This file is part of pbrt.
@@ -37,7 +37,6 @@
 
 #ifndef PBRT_SHAPES_SPHERE_H
 #define PBRT_SHAPES_SPHERE_H
-#include "stdafx.h"
 
 // shapes/sphere.h*
 #include "shape.h"
@@ -53,8 +52,8 @@ class Sphere : public Shape {
           radius(radius),
           zMin(Clamp(std::min(zMin, zMax), -radius, radius)),
           zMax(Clamp(std::max(zMin, zMax), -radius, radius)),
-          thetaMin(std::acos(Clamp(zMin / radius, -1, 1))),
-          thetaMax(std::acos(Clamp(zMax / radius, -1, 1))),
+          thetaMin(std::acos(Clamp(std::min(zMin, zMax) / radius, -1, 1))),
+          thetaMax(std::acos(Clamp(std::max(zMin, zMax) / radius, -1, 1))),
           phiMax(Radians(Clamp(phiMax, 0, 360))) {}
     Bounds3f ObjectBound() const;
     bool Intersect(const Ray &ray, Float *tHit, SurfaceInteraction *isect,

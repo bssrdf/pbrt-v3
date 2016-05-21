@@ -1,6 +1,6 @@
 
 /*
-    pbrt source code is Copyright(c) 1998-2015
+    pbrt source code is Copyright(c) 1998-2016
                         Matt Pharr, Greg Humphreys, and Wenzel Jakob.
 
     This file is part of pbrt.
@@ -30,7 +30,6 @@
 
  */
 
-#include "stdafx.h"
 
 // core/stats.cpp*
 #include "stats.h"
@@ -40,7 +39,9 @@
 #include <type_traits>
 #include <atomic>
 #include <signal.h>
+#ifndef PBRT_IS_WINDOWS
 #include <sys/time.h>
+#endif  // !PBRT_IS_WINDOWS
 
 // Statistics Local Variables
 std::vector<std::function<void(StatsAccumulator &)>> *StatRegisterer::funcs;
@@ -158,8 +159,8 @@ void StatsAccumulator::Print(FILE *dest) {
     }
 }
 
-static constexpr int NumProfEvents = (int)Prof::NumProfEvents;
-thread_local uint32_t profilerState;
+static PBRT_CONSTEXPR int NumProfEvents = (int)Prof::NumProfEvents;
+PBRT_THREAD_LOCAL uint32_t profilerState;
 
 #ifdef PBRT_IS_OSX
 #include <execinfo.h>

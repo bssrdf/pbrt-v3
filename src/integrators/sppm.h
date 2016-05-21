@@ -1,6 +1,6 @@
 
 /*
-    pbrt source code is Copyright(c) 1998-2015
+    pbrt source code is Copyright(c) 1998-2016
                         Matt Pharr, Greg Humphreys, and Wenzel Jakob.
 
     This file is part of pbrt.
@@ -37,7 +37,6 @@
 
 #ifndef PBRT_INTEGRATORS_SPPM_H
 #define PBRT_INTEGRATORS_SPPM_H
-#include "stdafx.h"
 
 // integrators/sppm.h*
 #include "pbrt.h"
@@ -53,12 +52,12 @@ class SPPMIntegrator : public Integrator {
                    int photonsPerIteration, int maxDepth,
                    Float initialSearchRadius, int writeFrequency)
         : camera(camera),
+          initialSearchRadius(initialSearchRadius),
           nIterations(nIterations),
+          maxDepth(maxDepth),
           photonsPerIteration(photonsPerIteration > 0
                                   ? photonsPerIteration
                                   : camera->film->croppedPixelBounds.Area()),
-          maxDepth(maxDepth),
-          initialSearchRadius(initialSearchRadius),
           writeFrequency(writeFrequency) {}
     void Render(const Scene &scene);
 

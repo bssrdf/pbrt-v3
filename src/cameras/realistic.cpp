@@ -1,6 +1,6 @@
 
 /*
-    pbrt source code is Copyright(c) 1998-2015
+    pbrt source code is Copyright(c) 1998-2016
                         Matt Pharr, Greg Humphreys, and Wenzel Jakob.
 
     This file is part of pbrt.
@@ -30,7 +30,6 @@
 
  */
 
-#include "stdafx.h"
 
 // cameras/realistic.cpp*
 #include "cameras/realistic.h"
@@ -49,23 +48,11 @@ STAT_PERCENT("Camera/Rays vignetted by lens system", vignettedRays, totalRays);
 RealisticCamera::RealisticCamera(const AnimatedTransform &CameraToWorld,
                                  Float shutterOpen, Float shutterClose,
                                  Float apertureDiameter, Float focusDistance,
-                                 bool simpleWeighting, const char *lensFile,
-                                 Film *film, const Medium *medium)
+                                 bool simpleWeighting,
+                                 std::vector<Float> &lensData, Film *film,
+                                 const Medium *medium)
     : Camera(CameraToWorld, shutterOpen, shutterClose, film, medium),
       simpleWeighting(simpleWeighting) {
-    // Load element data from lens description file
-    std::vector<Float> lensData;
-    if (ReadFloatFile(lensFile, &lensData) == false) {
-        Error("Error reading lens specification file \"%s\".", lensFile);
-        return;
-    }
-    if ((lensData.size() % 4) != 0) {
-        Error(
-            "Excess values in lens specification file \"%s\"; "
-            "must be multiple-of-four values, read %d.",
-            lensFile, (int)lensData.size());
-        return;
-    }
     for (int i = 0; i < (int)lensData.size(); i += 4) {
         if (lensData[i] == 0) {
             if (apertureDiameter > lensData[i + 3]) {
@@ -77,9 +64,9 @@ RealisticCamera::RealisticCamera(const AnimatedTransform &CameraToWorld,
                 lensData[i + 3] = apertureDiameter;
             }
         }
-        elementInterfaces.push_back((LensElementInterface){
-            lensData[i] * (Float).001, lensData[i + 1] * (Float).001,
-            lensData[i + 2], lensData[i + 3] * Float(.001) / Float(2.)});
+        elementInterfaces.push_back(LensElementInterface(
+            {lensData[i] * (Float).001, lensData[i + 1] * (Float).001,
+             lensData[i + 2], lensData[i + 3] * Float(.001) / Float(2.)}));
     }
 
     // Compute lens--film distance for given focus distance
@@ -415,7 +402,10 @@ void RealisticCamera::DrawRayPathFromScene(const Ray &r, bool arrow,
     // go to the film plane by default
     {
         Float ta = -ray.o.z / ray.d.z;
-        if (toOpticalIntercept) ta = -ray.o.x / ray.d.x;
+        if (toOpticalIntercept) {
+            ta = -ray.o.x / ray.d.x;
+            printf("Point[{%f, %f}], ", ray(ta).z, ray(ta).x);
+        }
         printf("%s[{{%f, %f}, {%f, %f}}]", arrow ? "Arrow" : "Line", ray.o.z,
                ray.o.x, ray(ta).z, ray(ta).x);
     }
@@ -630,8 +620,8 @@ void RealisticCamera::TestExitPupilBounds() const {
     // Now, randomly pick points on the aperture and see if any are outside
     // of pupil bounds...
     for (int i = 0; i < 1000; ++i) {
-        Point2f pd = ConcentricSampleDisk(
-            Point2f(rng.UniformFloat(), rng.UniformFloat()));
+        Point2f u2{rng.UniformFloat(), rng.UniformFloat()};
+        Point2f pd = ConcentricSampleDisk(u2);
         pd *= RearElementRadius();
 
         Ray testRay(pFilm, Point3f(pd.x, pd.y, 0.f) - pFilm);
@@ -710,10 +700,24 @@ RealisticCamera *CreateRealisticCamera(const ParamSet &params,
     bool simpleWeighting = params.FindOneBool("simpleweighting", true);
     if (lensFile == "") {
         Error("No lens description file supplied!");
-        return NULL;
+        return nullptr;
+    }
+    // Load element data from lens description file
+    std::vector<Float> lensData;
+    if (!ReadFloatFile(lensFile.c_str(), &lensData)) {
+        Error("Error reading lens specification file \"%s\".",
+              lensFile.c_str());
+        return nullptr;
+    }
+    if (lensData.size() % 4 != 0) {
+        Error(
+            "Excess values in lens specification file \"%s\"; "
+            "must be multiple-of-four values, read %d.",
+            lensFile.c_str(), (int)lensData.size());
+        return nullptr;
     }
 
     return new RealisticCamera(cam2world, shutteropen, shutterclose,
                                apertureDiameter, focusDistance, simpleWeighting,
-                               lensFile.c_str(), film, medium);
+                               lensData, film, medium);
 }

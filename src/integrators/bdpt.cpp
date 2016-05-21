@@ -1,6 +1,6 @@
 
 /*
-    pbrt source code is Copyright(c) 1998-2015
+    pbrt source code is Copyright(c) 1998-2016
                         Matt Pharr, Greg Humphreys, and Wenzel Jakob.
 
     This file is part of pbrt.
@@ -30,7 +30,6 @@
 
  */
 
-#include "stdafx.h"
 
 // integrators/bdpt.cpp*
 #include "integrators/bdpt.h"
@@ -43,6 +42,8 @@
 #include "progressreporter.h"
 
 STAT_TIMER("Time/Rendering", renderingTime);
+STAT_PERCENT("Integrator/Zero-radiance paths", zeroRadiancePaths, totalPaths);
+STAT_INT_DISTRIBUTION("Integrator/Path length", pathLength);
 
 // BDPT Forward Declarations
 int RandomWalk(const Scene &scene, RayDifferential ray, Sampler &sampler,
@@ -61,7 +62,8 @@ Float CorrectShadingNormal(const SurfaceInteraction &isect, const Vector3f &wo,
 
 int GenerateCameraSubpath(const Scene &scene, Sampler &sampler,
                           MemoryArena &arena, int maxDepth,
-                          const Camera &camera, Point2f &pFilm, Vertex *path) {
+                          const Camera &camera, const Point2f &pFilm,
+                          Vertex *path) {
     if (maxDepth == 0) return 0;
     // Sample initial ray for camera subpath
     CameraSample cameraSample;
@@ -90,15 +92,15 @@ int GenerateLightSubpath(const Scene &scene, Sampler &sampler,
     int lightNum = lightDistr.SampleDiscrete(sampler.Get1D(), &lightPdf);
     const std::shared_ptr<Light> &light = scene.lights[lightNum];
     RayDifferential ray;
-    Normal3f Nl;
+    Normal3f nLight;
     Float pdfPos, pdfDir;
     Spectrum Le = light->Sample_Le(sampler.Get2D(), sampler.Get2D(), time, &ray,
-                                   &Nl, &pdfPos, &pdfDir);
+                                   &nLight, &pdfPos, &pdfDir);
     if (pdfPos == 0 || pdfDir == 0 || Le.IsBlack()) return 0;
 
     // Generate first vertex on light subpath and start random walk
-    path[0] = Vertex::CreateLight(light.get(), ray, Nl, Le, pdfPos * lightPdf);
-    Spectrum beta = Le * AbsDot(Nl, ray.d) / (lightPdf * pdfPos * pdfDir);
+    path[0] = Vertex::CreateLight(light.get(), ray, nLight, Le, pdfPos * lightPdf);
+    Spectrum beta = Le * AbsDot(nLight, ray.d) / (lightPdf * pdfPos * pdfDir);
     int nVertices =
         RandomWalk(scene, ray, sampler, arena, beta, pdfDir, maxDepth - 1,
                    TransportMode::Importance, path + 1);
@@ -229,20 +231,20 @@ Float MISWeight(const Scene &scene, Vertex *lightVertices,
     if (pt) a2 = {&pt->delta, false};
     if (qs) a3 = {&qs->delta, false};
 
-    // Update reverse density of vertex $\pt{}_t$
+    // Update reverse density of vertex $\pt{}_{t-1}$
     ScopedAssignment<Float> a4;
     if (pt)
         a4 = {&pt->pdfRev, s > 0
                                ? qs->Pdf(scene, qsMinus, *pt)
                                : pt->PdfLightOrigin(scene, *ptMinus, lightPdf)};
 
-    // Update reverse density of vertex $\pt{}_{t-1}$
+    // Update reverse density of vertex $\pt{}_{t-2}$
     ScopedAssignment<Float> a5;
     if (ptMinus)
         a5 = {&ptMinus->pdfRev, s > 0 ? pt->Pdf(scene, qs, *ptMinus)
                                       : pt->PdfLight(scene, *ptMinus)};
 
-    // Update reverse density of vertices $\pq{}_s$ and $\pq{}_{s-1}$
+    // Update reverse density of vertices $\pq{}_{s-1}$ and $\pq{}_{s-2}$
     ScopedAssignment<Float> a6;
     if (qs) a6 = {&qs->pdfRev, pt->Pdf(scene, ptMinus, *qs)};
     ScopedAssignment<Float> a7;
@@ -314,7 +316,7 @@ void BDPTIntegrator::Render(const Scene &scene) {
     // Render and write the output image to disk
     if (scene.lights.size() > 0) {
         StatTimer timer(&renderingTime);
-        ParallelFor([&](const Point2i tile) {
+        ParallelFor2D([&](const Point2i tile) {
             // Render a single tile using BDPT
             MemoryArena arena;
             int seed = tile.y * nXTiles + tile.x;
@@ -442,9 +444,10 @@ Spectrum ConnectBDPT(const Scene &scene, Vertex *lightVertices,
                 sampled =
                     Vertex::CreateLight(ei, lightWeight / (pdf * lightPdf), 0);
                 sampled.pdfFwd = sampled.PdfLightOrigin(scene, pt, lightDistr);
-                L = pt.beta * pt.f(sampled) * vis.Tr(scene, sampler) *
-                    sampled.beta;
+                L = pt.beta * pt.f(sampled) * sampled.beta;
                 if (pt.IsOnSurface()) L *= AbsDot(wi, pt.ns());
+                // Only check visibility if the path would carry radiance.
+                if (!L.IsBlack()) L *= vis.Tr(scene, sampler);
             }
         }
     } else {
@@ -455,6 +458,10 @@ Spectrum ConnectBDPT(const Scene &scene, Vertex *lightVertices,
             if (!L.IsBlack()) L *= G(scene, sampler, qs, pt);
         }
     }
+
+    ++totalPaths;
+    if (L.IsBlack()) ++zeroRadiancePaths;
+    ReportValue(pathLength, s + t - 2);
 
     // Compute MIS weight for connection strategy
     Float misWeight =

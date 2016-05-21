@@ -1,6 +1,6 @@
 
 /*
-    pbrt source code is Copyright(c) 1998-2015
+    pbrt source code is Copyright(c) 1998-2016
                         Matt Pharr, Greg Humphreys, and Wenzel Jakob.
 
     This file is part of pbrt.
@@ -37,7 +37,6 @@
 
 #ifndef PBRT_CORE_MEMORY_H
 #define PBRT_CORE_MEMORY_H
-#include "stdafx.h"
 
 // core/memory.h*
 #include "pbrt.h"
@@ -45,15 +44,19 @@
 #include <list>
 
 // Memory Declarations
-#define ARENA_ALLOC(arena, Type) new (arena.Alloc(sizeof(Type))) Type
+#define ARENA_ALLOC(arena, Type) new ((arena).Alloc(sizeof(Type))) Type
 void *AllocAligned(size_t size);
 template <typename T>
-T *AllocAligned(int count) {
+T *AllocAligned(size_t count) {
     return (T *)AllocAligned(count * sizeof(T));
 }
 
 void FreeAligned(void *);
-class MemoryArena {
+class
+#ifdef PBRT_HAVE_ALIGNAS
+alignas(128)
+#endif // PBRT_HAVE_ALIGNAS
+    MemoryArena {
   public:
     // MemoryArena Public Methods
     MemoryArena(size_t blockSize = 262144) : blockSize(blockSize) {}
@@ -137,7 +140,7 @@ class BlockedArray {
             for (int v = 0; v < vRes; ++v)
                 for (int u = 0; u < uRes; ++u) (*this)(u, v) = d[v * uRes + u];
     }
-    constexpr int BlockSize() const { return 1 << logBlockSize; }
+    PBRT_CONSTEXPR int BlockSize() const { return 1 << logBlockSize; }
     int RoundUp(int x) const {
         return (x + BlockSize() - 1) & ~(BlockSize() - 1);
     }

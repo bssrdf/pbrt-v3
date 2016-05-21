@@ -1,6 +1,6 @@
 
 /*
-    pbrt source code is Copyright(c) 1998-2015
+    pbrt source code is Copyright(c) 1998-2016
                         Matt Pharr, Greg Humphreys, and Wenzel Jakob.
 
     This file is part of pbrt.
@@ -30,7 +30,6 @@
 
  */
 
-#include "stdafx.h"
 
 // core/reflection.cpp*
 #include "reflection.h"
@@ -350,6 +349,8 @@ Spectrum MicrofacetReflection::Sample_f(const Vector3f &wo, Vector3f *wi,
                                         const Point2f &u, Float *pdf,
                                         BxDFType *sampledType) const {
     // Sample microfacet orientation $\wh$ and reflected direction $\wi$
+    if (wo.z == 0)
+        return 0.;
     Vector3f wh = distribution->Sample_wh(wo, u);
     *wi = Reflect(wo, wh);
     if (!SameHemisphere(wo, *wi)) return Spectrum(0.f);
@@ -368,6 +369,8 @@ Float MicrofacetReflection::Pdf(const Vector3f &wo, const Vector3f &wi) const {
 Spectrum MicrofacetTransmission::Sample_f(const Vector3f &wo, Vector3f *wi,
                                           const Point2f &u, Float *pdf,
                                           BxDFType *sampledType) const {
+    if (wo.z == 0)
+        return 0.;
     Vector3f wh = distribution->Sample_wh(wo, u);
     Float eta = CosTheta(wo) > 0 ? (etaA / etaB) : (etaB / etaA);
     if (!Refract(wo, (Normal3f)wh, eta, wi)) return 0;
@@ -394,12 +397,12 @@ Spectrum FresnelBlend::Sample_f(const Vector3f &wo, Vector3f *wi,
                                 BxDFType *sampledType) const {
     Point2f u = uOrig;
     if (u[0] < .5) {
-        u[0] = 2 * u[0];
+        u[0] = std::min(2 * u[0], OneMinusEpsilon);
         // Cosine-sample the hemisphere, flipping the direction if necessary
         *wi = CosineSampleHemisphere(u);
         if (wo.z < 0) wi->z *= -1;
     } else {
-        u[0] = 2 * (u[0] - .5f);
+        u[0] = std::min(2 * (u[0] - .5f), OneMinusEpsilon);
         // Sample microfacet orientation $\wh$ and reflected direction $\wi$
         Vector3f wh = distribution->Sample_wh(wo, u);
         *wi = Reflect(wo, wh);
@@ -459,7 +462,7 @@ Spectrum FourierBSDF::Sample_f(const Vector3f &wo, Vector3f *wi,
     Float muO = CosTheta(wo);
     Float pdfMu;
     Float muI = SampleCatmullRom2D(bsdfTable.nMu, bsdfTable.nMu, bsdfTable.mu,
-                                   bsdfTable.mu, bsdfTable.avg, bsdfTable.cdf,
+                                   bsdfTable.mu, bsdfTable.a0, bsdfTable.cdf,
                                    muO, u[1], nullptr, &pdfMu);
 
     // Compute Fourier coefficients $a_k$ for $(\mui, \muo)$
@@ -592,6 +595,7 @@ Spectrum BSDF::f(const Vector3f &woW, const Vector3f &wiW,
                  BxDFType flags) const {
     ProfilePhase pp(Prof::BSDFEvaluation);
     Vector3f wi = WorldToLocal(wiW), wo = WorldToLocal(woW);
+    if (wo.z == 0) return 0.;
     bool reflect = Dot(wiW, ng) * Dot(woW, ng) > 0;
     Spectrum f(0.f);
     for (int i = 0; i < nBxDFs; ++i)
@@ -645,10 +649,12 @@ Spectrum BSDF::Sample_f(const Vector3f &woWorld, Vector3f *wiWorld,
     Assert(bxdf);
 
     // Remap _BxDF_ sample _u_ to $[0,1)^2$
-    Point2f uRemapped(u[0] * matchingComps - comp, u[1]);
+    Point2f uRemapped(std::min(u[0] * matchingComps - comp, OneMinusEpsilon),
+                      u[1]);
 
     // Sample chosen _BxDF_
     Vector3f wi, wo = WorldToLocal(woWorld);
+    if (wo.z == 0) return 0.;
     *pdf = 0;
     if (sampledType) *sampledType = bxdf->type;
     Spectrum f = bxdf->Sample_f(wo, &wi, uRemapped, pdf, sampledType);
@@ -682,6 +688,7 @@ Float BSDF::Pdf(const Vector3f &woWorld, const Vector3f &wiWorld,
                 BxDFType flags) const {
     if (nBxDFs == 0.f) return 0.f;
     Vector3f wo = WorldToLocal(woWorld), wi = WorldToLocal(wiWorld);
+    if (wo.z == 0) return 0.;
     Float pdf = 0.f;
     int matchingComps = 0;
     for (int i = 0; i < nBxDFs; ++i)

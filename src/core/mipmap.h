@@ -1,6 +1,6 @@
 
 /*
-    pbrt source code is Copyright(c) 1998-2015
+    pbrt source code is Copyright(c) 1998-2016
                         Matt Pharr, Greg Humphreys, and Wenzel Jakob.
 
     This file is part of pbrt.
@@ -37,7 +37,6 @@
 
 #ifndef PBRT_CORE_MIPMAP_H
 #define PBRT_CORE_MIPMAP_H
-#include "stdafx.h"
 
 // core/mipmap.h*
 #include "pbrt.h"
@@ -106,7 +105,7 @@ class MIPMap {
     const ImageWrap wrapMode;
     Point2i resolution;
     std::vector<std::unique_ptr<BlockedArray<T>>> pyramid;
-    static constexpr int WeightLUTSize = 128;
+    static PBRT_CONSTEXPR int WeightLUTSize = 128;
     static Float weightLut[WeightLUTSize];
 };
 
@@ -156,7 +155,7 @@ MIPMap<T>::MIPMap(const Point2i &res, const T *img, bool doTrilinear,
         for (int i = 0; i < nThreads; ++i)
             resampleBufs.push_back(new T[resPow2[1]]);
         ParallelFor([&](int s) {
-            T *workData = resampleBufs[threadIndex];
+            T *workData = resampleBufs[ThreadIndex];
             for (int t = 0; t < resPow2[1]; ++t) {
                 workData[t] = 0.f;
                 for (int j = 0; j < 4; ++j) {

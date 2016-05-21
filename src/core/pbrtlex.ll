@@ -1,6 +1,6 @@
 
 /*
-    pbrt source code is Copyright(c) 1998-2015
+    pbrt source code is Copyright(c) 1998-2016
                         Matt Pharr, Greg Humphreys, and Wenzel Jakob.
 
     This file is part of pbrt.
@@ -30,12 +30,9 @@
 
  */
 
-/* state used for include file stuff */
-%{
+%option nounistd
 
-#define YY_MAIN 0
-#define YY_NO_INPUT 1
-#define YY_NEVER_INTERACTIVE 1
+%{
 
 #include "pbrt.h"
 #include "api.h"
@@ -44,19 +41,22 @@
 struct ParamArray;
 
 #if defined(PBRT_IS_MSVC)
+#include <io.h>
 #pragma warning(disable:4244)
 #pragma warning(disable:4065)
 #pragma warning(disable:4018)
 #pragma warning(disable:4996)
+int isatty(int fd) { return _isatty(fd); }
+#else
+#include <unistd.h>
 #endif  // PBRT_IS_MSVC
-#include "pbrtparse.hh"
+#include "pbrtparse.h"
 
 struct IncludeInfo {
     std::string filename;
     YY_BUFFER_STATE bufState;
     int lineNum;
 };
-
 
 std::vector<IncludeInfo> includeStack;
 
@@ -67,7 +67,6 @@ void add_string_char(char c) {
     yylval.string[str_pos++] = c;
     yylval.string[str_pos] = '\0';
 }
-
 
 
 void include_push(char *filename) {
@@ -164,13 +163,14 @@ WorldEnd                { return WORLDEND; }
 {WHITESPACE} /* do nothing */
 \n { line_num++; }
 {NUMBER} {
-    yylval.num = (Float) atof(yytext);
+    yylval.num = atof(yytext);
     return NUM;
 }
 
 
 {IDENT} {
-    strcpy(yylval.string, yytext);
+    yylval.string[0] = '\0';
+    strncat(yylval.string, yytext, sizeof(yylval.string) - 1);
     return ID;
 }
 

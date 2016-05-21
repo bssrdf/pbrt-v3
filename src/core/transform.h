@@ -1,6 +1,6 @@
 
 /*
-    pbrt source code is Copyright(c) 1998-2015
+    pbrt source code is Copyright(c) 1998-2016
                         Matt Pharr, Greg Humphreys, and Wenzel Jakob.
 
     This file is part of pbrt.
@@ -37,7 +37,6 @@
 
 #ifndef PBRT_CORE_TRANSFORM_H
 #define PBRT_CORE_TRANSFORM_H
-#include "stdafx.h"
 
 // core/transform.h*
 #include "pbrt.h"
@@ -152,8 +151,6 @@ class Transform {
     inline Vector3<T> operator()(const Vector3<T> &v) const;
     template <typename T>
     inline Normal3<T> operator()(const Normal3<T> &) const;
-    template <typename T>
-    inline void operator()(const Normal3<T> &, Normal3<T> *nt) const;
     inline Ray operator()(const Ray &r) const;
     inline RayDifferential operator()(const RayDifferential &r) const;
     Bounds3f operator()(const Bounds3f &b) const;

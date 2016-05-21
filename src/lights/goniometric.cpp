@@ -1,6 +1,6 @@
 
 /*
-    pbrt source code is Copyright(c) 1998-2015
+    pbrt source code is Copyright(c) 1998-2016
                         Matt Pharr, Greg Humphreys, and Wenzel Jakob.
 
     This file is part of pbrt.
@@ -30,7 +30,6 @@
 
  */
 
-#include "stdafx.h"
 
 // lights/goniometric.cpp*
 #include "lights/goniometric.h"
@@ -51,7 +50,7 @@ Spectrum GonioPhotometricLight::Sample_Li(const Interaction &ref,
 
 Spectrum GonioPhotometricLight::Power() const {
     return 4 * Pi * I * Spectrum(mipmap ? mipmap->Lookup(Point2f(.5f, .5f), .5f)
-                                        : Spectrum(1.f),
+                                        : RGBSpectrum(1.f),
                                  SpectrumType::Illuminant);
 }
 

@@ -1,6 +1,6 @@
 
 /*
-    pbrt source code is Copyright(c) 1998-2015
+    pbrt source code is Copyright(c) 1998-2016
                         Matt Pharr, Greg Humphreys, and Wenzel Jakob.
 
     This file is part of pbrt.
@@ -37,7 +37,6 @@
 
 #ifndef PBRT_CORE_INTERACTION_H
 #define PBRT_CORE_INTERACTION_H
-#include "stdafx.h"
 
 // core/interaction.h*
 #include "pbrt.h"
@@ -56,7 +55,7 @@ struct Interaction {
         : p(p),
           time(time),
           pError(pError),
-          wo(wo),
+          wo(Normalize(wo)),
           n(n),
           mediumInterface(mediumInterface) {}
     bool IsSurfaceInteraction() const { return n != Normal3f(); }
@@ -66,7 +65,7 @@ struct Interaction {
     }
     Ray SpawnRayTo(const Point3f &p2) const {
         Point3f origin = OffsetRayOrigin(p, pError, n, p2 - p);
-        Vector3f d = p2 - origin;
+        Vector3f d = p2 - p;
         return Ray(origin, d, 1 - ShadowEpsilon, time, GetMedium(d));
     }
     Ray SpawnRayTo(const Interaction &it) const {

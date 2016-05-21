@@ -1,6 +1,6 @@
 
 /*
-    pbrt source code is Copyright(c) 1998-2015
+    pbrt source code is Copyright(c) 1998-2016
                         Matt Pharr, Greg Humphreys, and Wenzel Jakob.
 
     This file is part of pbrt.
@@ -30,7 +30,6 @@
 
  */
 
-#include "stdafx.h"
 
 // integrators/mlt.cpp*
 #include "integrators/mlt.h"
@@ -62,7 +61,7 @@ Float MLTSampler::Get1D() {
     return X[index].value;
 }
 
-Point2f MLTSampler::Get2D() { return Point2f(Get1D(), Get1D()); }
+Point2f MLTSampler::Get2D() { return {Get1D(), Get1D()}; }
 
 std::unique_ptr<Sampler> MLTSampler::Clone(int seed) {
     Severe("MLTSampler::Clone() is not implemented");
@@ -168,12 +167,13 @@ void MLTIntegrator::Render(const Scene &scene) {
     int nBootstrapSamples = nBootstrap * (maxDepth + 1);
     std::vector<Float> bootstrapWeights(nBootstrapSamples, 0);
     if (scene.lights.size() > 0) {
-        ProgressReporter progress(nBootstrap / 4096,
+        ProgressReporter progress(nBootstrap / 256,
                                   "Generating bootstrap paths");
         std::vector<MemoryArena> bootstrapThreadArenas(MaxThreadIndex());
+        int chunkSize = Clamp(nBootstrap / 128, 1, 8192);
         ParallelFor([&](int i) {
             // Generate _i_th bootstrap sample
-            MemoryArena &arena = bootstrapThreadArenas[threadIndex];
+            MemoryArena &arena = bootstrapThreadArenas[ThreadIndex];
             for (int depth = 0; depth <= maxDepth; ++depth) {
                 int rngIndex = i * (maxDepth + 1) + depth;
                 MLTSampler sampler(mutationsPerPixel, rngIndex, sigma,
@@ -183,8 +183,8 @@ void MLTIntegrator::Render(const Scene &scene) {
                     L(scene, arena, lightDistr, sampler, depth, &pRaster).y();
                 arena.Reset();
             }
-            if ((i + 1 % 4096) == 0) progress.Update();
-        }, nBootstrap, 4096);
+            if ((i + 1 % 256) == 0) progress.Update();
+        }, nBootstrap, chunkSize);
         progress.Done();
     }
     Distribution1D bootstrap(&bootstrapWeights[0], nBootstrapSamples);

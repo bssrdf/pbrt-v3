@@ -1,6 +1,6 @@
 
 /*
-    pbrt source code is Copyright(c) 1998-2015
+    pbrt source code is Copyright(c) 1998-2016
                         Matt Pharr, Greg Humphreys, and Wenzel Jakob.
 
     This file is part of pbrt.
@@ -30,7 +30,6 @@
 
  */
 
-#include "stdafx.h"
 
 // shapes/triangle.cpp*
 #include "shapes/triangle.h"
@@ -49,72 +48,22 @@ static void PlyErrorCallback(p_ply, const char *message) {
 
 // Triangle Method Definitions
 STAT_RATIO("Scene/Triangles per triangle mesh", nTris, nMeshes);
-TriangleMesh::TriangleMesh(const Transform &ObjectToWorld, int nTriangles,
-                           const int *vertexIndices, int nVertices,
-                           const Point3f *P, const Vector3f *S,
-                           const Normal3f *N, const Point2f *UV,
-                           const std::shared_ptr<Texture<Float>> &alphaMask)
+TriangleMesh::TriangleMesh(
+    const Transform &ObjectToWorld, int nTriangles, const int *vertexIndices,
+    int nVertices, const Point3f *P, const Vector3f *S, const Normal3f *N,
+    const Point2f *UV, const std::shared_ptr<Texture<Float>> &alphaMask,
+    const std::shared_ptr<Texture<Float>> &shadowAlphaMask)
     : nTriangles(nTriangles),
       nVertices(nVertices),
       vertexIndices(vertexIndices, vertexIndices + 3 * nTriangles),
-      alphaMask(alphaMask) {
+      alphaMask(alphaMask),
+      shadowAlphaMask(shadowAlphaMask) {
     ++nMeshes;
     nTris += nTriangles;
     triMeshBytes += sizeof(*this) + (3 * nTriangles * sizeof(int)) +
                     nVertices * (sizeof(*P) + (N ? sizeof(*N) : 0) +
                                  (S ? sizeof(*S) : 0) + (UV ? sizeof(*UV) : 0));
-    if (getenv("PBRT_DUMP_PLY")) {
-        // Write out triangle mesh as PLY file
-        static int count = 1;
-        char fn[128];
-        sprintf(fn, "mesh_%05d.ply", count++);
-        p_ply plyFile =
-            ply_create(fn, PLY_DEFAULT, PlyErrorCallback, 0, nullptr);
-        if (plyFile != nullptr) {
-            ply_add_element(plyFile, "vertex", nVertices);
-            ply_add_scalar_property(plyFile, "x", PLY_FLOAT);
-            ply_add_scalar_property(plyFile, "y", PLY_FLOAT);
-            ply_add_scalar_property(plyFile, "z", PLY_FLOAT);
-            if (N != nullptr) {
-                ply_add_scalar_property(plyFile, "nx", PLY_FLOAT);
-                ply_add_scalar_property(plyFile, "ny", PLY_FLOAT);
-                ply_add_scalar_property(plyFile, "nz", PLY_FLOAT);
-            }
-            if (UV != nullptr) {
-                ply_add_scalar_property(plyFile, "u", PLY_FLOAT);
-                ply_add_scalar_property(plyFile, "v", PLY_FLOAT);
-            }
-            // TODO(?): tangent vectors...
 
-            ply_add_element(plyFile, "face", nTriangles);
-            ply_add_list_property(plyFile, "vertex_indices", PLY_UINT8,
-                                  PLY_INT);
-            ply_write_header(plyFile);
-
-            for (int i = 0; i < nVertices; ++i) {
-                ply_write(plyFile, P[i].x);
-                ply_write(plyFile, P[i].y);
-                ply_write(plyFile, P[i].z);
-                if (N) {
-                    ply_write(plyFile, N[i].x);
-                    ply_write(plyFile, N[i].y);
-                    ply_write(plyFile, N[i].z);
-                }
-                if (UV) {
-                    ply_write(plyFile, UV[i].x);
-                    ply_write(plyFile, UV[i].y);
-                }
-            }
-
-            for (int i = 0; i < nTriangles; ++i) {
-                ply_write(plyFile, 3);
-                ply_write(plyFile, vertexIndices[3 * i]);
-                ply_write(plyFile, vertexIndices[3 * i + 1]);
-                ply_write(plyFile, vertexIndices[3 * i + 2]);
-            }
-            ply_close(plyFile);
-        }
-    }
     // Transform mesh vertices to world space
     p.reset(new Point3f[nVertices]);
     for (int i = 0; i < nVertices; ++i) p[i] = ObjectToWorld(P[i]);
@@ -138,16 +87,71 @@ std::vector<std::shared_ptr<Shape>> CreateTriangleMesh(
     const Transform *ObjectToWorld, const Transform *WorldToObject,
     bool reverseOrientation, int nTriangles, const int *vertexIndices,
     int nVertices, const Point3f *p, const Vector3f *s, const Normal3f *n,
-    const Point2f *uv, const std::shared_ptr<Texture<Float>> &alphaMask) {
+    const Point2f *uv, const std::shared_ptr<Texture<Float>> &alphaMask,
+    const std::shared_ptr<Texture<Float>> &shadowAlphaMask) {
     std::shared_ptr<TriangleMesh> mesh = std::make_shared<TriangleMesh>(
         *ObjectToWorld, nTriangles, vertexIndices, nVertices, p, s, n, uv,
-        alphaMask);
+        alphaMask, shadowAlphaMask);
     std::vector<std::shared_ptr<Shape>> tris;
     tris.reserve(nTriangles);
     for (int i = 0; i < nTriangles; ++i)
         tris.push_back(std::make_shared<Triangle>(ObjectToWorld, WorldToObject,
                                                   reverseOrientation, mesh, i));
     return tris;
+}
+
+bool WritePlyFile(const std::string &filename, int nTriangles,
+                  const int *vertexIndices, int nVertices, const Point3f *P,
+                  const Vector3f *S, const Normal3f *N, const Point2f *UV) {
+    p_ply plyFile =
+        ply_create(filename.c_str(), PLY_DEFAULT, PlyErrorCallback, 0, nullptr);
+    if (plyFile != nullptr) {
+        ply_add_element(plyFile, "vertex", nVertices);
+        ply_add_scalar_property(plyFile, "x", PLY_FLOAT);
+        ply_add_scalar_property(plyFile, "y", PLY_FLOAT);
+        ply_add_scalar_property(plyFile, "z", PLY_FLOAT);
+        if (N != nullptr) {
+            ply_add_scalar_property(plyFile, "nx", PLY_FLOAT);
+            ply_add_scalar_property(plyFile, "ny", PLY_FLOAT);
+            ply_add_scalar_property(plyFile, "nz", PLY_FLOAT);
+        }
+        if (UV != nullptr) {
+            ply_add_scalar_property(plyFile, "u", PLY_FLOAT);
+            ply_add_scalar_property(plyFile, "v", PLY_FLOAT);
+        }
+        if (S != nullptr)
+            Warning("PLY mesh in \"%s\" will be missing tangent vectors \"S\".",
+                    filename.c_str());
+
+        ply_add_element(plyFile, "face", nTriangles);
+        ply_add_list_property(plyFile, "vertex_indices", PLY_UINT8, PLY_INT);
+        ply_write_header(plyFile);
+
+        for (int i = 0; i < nVertices; ++i) {
+            ply_write(plyFile, P[i].x);
+            ply_write(plyFile, P[i].y);
+            ply_write(plyFile, P[i].z);
+            if (N) {
+                ply_write(plyFile, N[i].x);
+                ply_write(plyFile, N[i].y);
+                ply_write(plyFile, N[i].z);
+            }
+            if (UV) {
+                ply_write(plyFile, UV[i].x);
+                ply_write(plyFile, UV[i].y);
+            }
+        }
+
+        for (int i = 0; i < nTriangles; ++i) {
+            ply_write(plyFile, 3);
+            ply_write(plyFile, vertexIndices[3 * i]);
+            ply_write(plyFile, vertexIndices[3 * i + 1]);
+            ply_write(plyFile, vertexIndices[3 * i + 2]);
+        }
+        ply_close(plyFile);
+        return true;
+    }
+    return false;
 }
 
 Bounds3f Triangle::ObjectBound() const {
@@ -271,85 +275,6 @@ bool Triangle::Intersect(const Ray &ray, Float *tHit, SurfaceInteraction *isect,
                    (gamma(3) * maxE * maxZt + deltaE * maxZt + deltaZ * maxE) *
                    std::abs(invDet);
     if (t <= deltaT) return false;
-#ifndef NDEBUG
-    if (false) {
-// Check triangle $t$ against reference high-precision solution
-#define P(f)                                                             \
-    fprintf(stderr, "%s: %g / %Lg (abs err %g rel %g ulpdiff %d)\n", #f, \
-            (float)(f), (f).PreciseValue(), (f).GetAbsoluteError(),      \
-            (f).GetRelativeError(),                                      \
-            FloatToBits((float)(f).PreciseValue()) - FloatToBits((float)(f)))
-        EFloat Sx = EFloat(ray.d[kx]) / EFloat(ray.d[kz]);
-        EFloat Sy = EFloat(ray.d[ky]) / EFloat(ray.d[kz]);
-        EFloat Sz = EFloat(1.0f) / EFloat(ray.d[kz]);
-
-        EFloat p0t[3], p1t[3], p2t[3];
-        for (int i = 0; i < 3; ++i) {
-            p0t[i] = EFloat(p0[i]) - EFloat(ray.o[i]);
-            p1t[i] = EFloat(p1[i]) - EFloat(ray.o[i]);
-            p2t[i] = EFloat(p2[i]) - EFloat(ray.o[i]);
-        }
-
-        // Transform triangle vertices to ray coordinate space
-        EFloat p0tx = p0t[kx] - Sx * p0t[kz];
-        EFloat p0ty = p0t[ky] - Sy * p0t[kz];
-        EFloat p1tx = p1t[kx] - Sx * p1t[kz];
-        EFloat p1ty = p1t[ky] - Sy * p1t[kz];
-        EFloat p2tx = p2t[kx] - Sx * p2t[kz];
-        EFloat p2ty = p2t[ky] - Sy * p2t[kz];
-
-        // Compute edge function coefficients \mono{e0}, \mono{e1}, and
-        // \mono{e2}
-        EFloat e0 = p2tx * p1ty - p2ty * p1tx;
-        EFloat e1 = p0tx * p2ty - p0ty * p2tx;
-        EFloat e2 = p1tx * p0ty - p1ty * p0tx;
-
-        EFloat det = e0 + e1 + e2;
-
-        // Compute scaled hit distance to triangle and test against ray $t$
-        // range
-        EFloat p0tz = Sz * p0t[kz];
-        EFloat p1tz = Sz * p1t[kz];
-        EFloat p2tz = Sz * p2t[kz];
-        EFloat tScaled = e0 * p0tz + e1 * p1tz + e2 * p2tz;
-
-        EFloat invDet = 1.0f / det;
-        EFloat t = tScaled * invDet;
-
-        if ((float)t > 0 && t.PreciseValue() < 0.f) {
-            fprintf(stderr,
-                    "\nBoundz? t %.10g precise %.10Lg, tScaled %.10g "
-                    "tErrorBound %.10g (fail factor %f), fwe bound %.10g\n",
-                    (float)t, t.PreciseValue(), (float)tScaled, deltaT,
-                    (float)tScaled / deltaT, t.GetAbsoluteError());
-#if 1
-            // P(p0tx);
-            // P(p0ty);
-            // P(p1tx);
-            // P(p1ty);
-            // P(p2tx);
-            // P(p2ty);
-            P(e0);
-            P(e1);
-            P(e2);
-            P(det);
-            P(p0tz);
-            P(p1tz);
-            P(p2tz);
-            P(e0 * p0tz);
-            P(e1 * p1tz);
-            P(e2 * p2tz);
-            P(tScaled);
-            P(invDet);
-            P(t);
-            P((e0 / det) * p0tz + (e1 / det) * p1tz + (e2 / det) * p2tz);
-#endif
-            //    abort();
-            return false;
-        }
-#undef P
-    }
-#endif  // !NDEBUG
 
     // Compute triangle partial derivatives
     Vector3f dpdu, dpdv;
@@ -384,9 +309,9 @@ bool Triangle::Intersect(const Ray &ray, Float *tHit, SurfaceInteraction *isect,
 
     // Test intersection against alpha texture, if present
     if (testAlphaTexture && mesh->alphaMask) {
-        SurfaceInteraction isectLocal(
-            pHit, Vector3f(0, 0, 0), uvHit, Vector3f(0, 0, 0), dpdu, dpdv,
-            Normal3f(0, 0, 0), Normal3f(0, 0, 0), ray.time, this);
+        SurfaceInteraction isectLocal(pHit, Vector3f(0, 0, 0), uvHit, -ray.d,
+                                      dpdu, dpdv, Normal3f(0, 0, 0),
+                                      Normal3f(0, 0, 0), ray.time, this);
         if (mesh->alphaMask->Evaluate(isectLocal) == 0) return false;
     }
 
@@ -402,17 +327,26 @@ bool Triangle::Intersect(const Ray &ray, Float *tHit, SurfaceInteraction *isect,
 
         // Compute shading normal _ns_ for triangle
         Normal3f ns;
-        if (mesh->n)
-            ns = Normalize(b0 * mesh->n[v[0]] + b1 * mesh->n[v[1]] +
-                           b2 * mesh->n[v[2]]);
-        else
+        if (mesh->n) {
+            ns = (b0 * mesh->n[v[0]] + b1 * mesh->n[v[1]] +
+                  b2 * mesh->n[v[2]]);
+            if (ns.LengthSquared() > 0)
+                ns = Normalize(ns);
+            else
+                ns = isect->n;
+        } else
             ns = isect->n;
 
         // Compute shading tangent _ss_ for triangle
         Vector3f ss;
-        if (mesh->s)
-            ss = Normalize(b0 * mesh->s[v[0]] + b1 * mesh->s[v[1]] +
-                           b2 * mesh->s[v[2]]);
+        if (mesh->s) {
+            ss = (b0 * mesh->s[v[0]] + b1 * mesh->s[v[1]] +
+                  b2 * mesh->s[v[2]]);
+            if (ss.LengthSquared() > 0)
+                ss = Normalize(ss);
+            else
+                ss = Normalize(isect->dpdu);
+        }
         else
             ss = Normalize(isect->dpdu);
 
@@ -558,88 +492,9 @@ bool Triangle::IntersectP(const Ray &ray, bool testAlphaTexture) const {
                    (gamma(3) * maxE * maxZt + deltaE * maxZt + deltaZ * maxE) *
                    std::abs(invDet);
     if (t <= deltaT) return false;
-#ifndef NDEBUG
-    if (false) {
-// Check triangle $t$ against reference high-precision solution
-#define P(f)                                                             \
-    fprintf(stderr, "%s: %g / %Lg (abs err %g rel %g ulpdiff %d)\n", #f, \
-            (float)(f), (f).PreciseValue(), (f).GetAbsoluteError(),      \
-            (f).GetRelativeError(),                                      \
-            FloatToBits((float)(f).PreciseValue()) - FloatToBits((float)(f)))
-        EFloat Sx = EFloat(ray.d[kx]) / EFloat(ray.d[kz]);
-        EFloat Sy = EFloat(ray.d[ky]) / EFloat(ray.d[kz]);
-        EFloat Sz = EFloat(1.0f) / EFloat(ray.d[kz]);
-
-        EFloat p0t[3], p1t[3], p2t[3];
-        for (int i = 0; i < 3; ++i) {
-            p0t[i] = EFloat(p0[i]) - EFloat(ray.o[i]);
-            p1t[i] = EFloat(p1[i]) - EFloat(ray.o[i]);
-            p2t[i] = EFloat(p2[i]) - EFloat(ray.o[i]);
-        }
-
-        // Transform triangle vertices to ray coordinate space
-        EFloat p0tx = p0t[kx] - Sx * p0t[kz];
-        EFloat p0ty = p0t[ky] - Sy * p0t[kz];
-        EFloat p1tx = p1t[kx] - Sx * p1t[kz];
-        EFloat p1ty = p1t[ky] - Sy * p1t[kz];
-        EFloat p2tx = p2t[kx] - Sx * p2t[kz];
-        EFloat p2ty = p2t[ky] - Sy * p2t[kz];
-
-        // Compute edge function coefficients \mono{e0}, \mono{e1}, and
-        // \mono{e2}
-        EFloat e0 = p2tx * p1ty - p2ty * p1tx;
-        EFloat e1 = p0tx * p2ty - p0ty * p2tx;
-        EFloat e2 = p1tx * p0ty - p1ty * p0tx;
-
-        EFloat det = e0 + e1 + e2;
-
-        // Compute scaled hit distance to triangle and test against ray $t$
-        // range
-        EFloat p0tz = Sz * p0t[kz];
-        EFloat p1tz = Sz * p1t[kz];
-        EFloat p2tz = Sz * p2t[kz];
-        EFloat tScaled = e0 * p0tz + e1 * p1tz + e2 * p2tz;
-
-        EFloat invDet = 1.0f / det;
-        EFloat t = tScaled * invDet;
-
-        if ((float)t > 0 && t.PreciseValue() < 0.f) {
-            fprintf(stderr,
-                    "\nBoundz? t %.10g precise %.10Lg, tScaled %.10g "
-                    "tErrorBound %.10g (fail factor %f), fwe bound %.10g\n",
-                    (float)t, t.PreciseValue(), (float)tScaled, deltaT,
-                    (float)tScaled / deltaT, t.GetAbsoluteError());
-#if 1
-            // P(p0tx);
-            // P(p0ty);
-            // P(p1tx);
-            // P(p1ty);
-            // P(p2tx);
-            // P(p2ty);
-            P(e0);
-            P(e1);
-            P(e2);
-            P(det);
-            P(p0tz);
-            P(p1tz);
-            P(p2tz);
-            P(e0 * p0tz);
-            P(e1 * p1tz);
-            P(e2 * p2tz);
-            P(tScaled);
-            P(invDet);
-            P(t);
-            P((e0 / det) * p0tz + (e1 / det) * p1tz + (e2 / det) * p2tz);
-#endif
-            //    abort();
-            return false;
-        }
-#undef P
-    }
-#endif  // !NDEBUG
 
     // Test shadow ray intersection against alpha texture, if present
-    if (testAlphaTexture && mesh->alphaMask) {
+    if (testAlphaTexture && (mesh->alphaMask || mesh->shadowAlphaMask)) {
         // Compute triangle partial derivatives
         Vector3f dpdu, dpdv;
         Point2f uv[3];
@@ -661,10 +516,14 @@ bool Triangle::IntersectP(const Ray &ray, bool testAlphaTexture) const {
         // Interpolate $(u,v)$ parametric coordinates and hit point
         Point3f pHit = b0 * p0 + b1 * p1 + b2 * p2;
         Point2f uvHit = b0 * uv[0] + b1 * uv[1] + b2 * uv[2];
-        SurfaceInteraction isectLocal(
-            pHit, Vector3f(0, 0, 0), uvHit, Vector3f(0, 0, 0), dpdu, dpdv,
-            Normal3f(0, 0, 0), Normal3f(0, 0, 0), ray.time, this);
-        if (mesh->alphaMask->Evaluate(isectLocal) == 0) return false;
+        SurfaceInteraction isectLocal(pHit, Vector3f(0, 0, 0), uvHit, -ray.d,
+                                      dpdu, dpdv, Normal3f(0, 0, 0),
+                                      Normal3f(0, 0, 0), ray.time, this);
+        if (mesh->alphaMask && mesh->alphaMask->Evaluate(isectLocal) == 0)
+            return false;
+        if (mesh->shadowAlphaMask &&
+            mesh->shadowAlphaMask->Evaluate(isectLocal) == 0)
+            return false;
     }
     ++nHits;
     return true;
@@ -741,12 +600,10 @@ std::vector<std::shared_ptr<Shape>> CreateTriangleMeshShape(
         Error(
             "Vertex indices \"indices\" not provided with triangle mesh shape");
         return std::vector<std::shared_ptr<Shape>>();
-        ;
     }
     if (!P) {
         Error("Vertex positions \"P\" not provided with triangle mesh shape");
         return std::vector<std::shared_ptr<Shape>>();
-        ;
     }
     const Vector3f *S = params.FindVector3f("S", &nsi);
     if (S && nsi != npi) {
@@ -787,7 +644,6 @@ std::vector<std::shared_ptr<Shape>> CreateTriangleMeshShape(
                 "values were given",
                 vi[i], npi);
             return std::vector<std::shared_ptr<Shape>>();
-            ;
         }
 
     std::shared_ptr<Texture<Float>> alphaTex;
@@ -800,6 +656,20 @@ std::vector<std::shared_ptr<Shape>> CreateTriangleMeshShape(
                   alphaTexName.c_str());
     } else if (params.FindOneFloat("alpha", 1.f) == 0.f)
         alphaTex.reset(new ConstantTexture<Float>(0.f));
+
+    std::shared_ptr<Texture<Float>> shadowAlphaTex;
+    std::string shadowAlphaTexName = params.FindTexture("shadowalpha");
+    if (shadowAlphaTexName != "") {
+        if (floatTextures->find(shadowAlphaTexName) != floatTextures->end())
+            shadowAlphaTex = (*floatTextures)[shadowAlphaTexName];
+        else
+            Error(
+                "Couldn't find float texture \"%s\" for \"shadowalpha\" "
+                "parameter",
+                shadowAlphaTexName.c_str());
+    } else if (params.FindOneFloat("shadowalpha", 1.f) == 0.f)
+        shadowAlphaTex.reset(new ConstantTexture<Float>(0.f));
+
     return CreateTriangleMesh(o2w, w2o, reverseOrientation, nvi / 3, vi, npi, P,
-                              S, N, uvs, alphaTex);
+                              S, N, uvs, alphaTex, shadowAlphaTex);
 }

@@ -1,6 +1,6 @@
 
 /*
-    pbrt source code is Copyright(c) 1998-2015
+    pbrt source code is Copyright(c) 1998-2016
                         Matt Pharr, Greg Humphreys, and Wenzel Jakob.
 
     This file is part of pbrt.
@@ -30,7 +30,6 @@
 
  */
 
-#include "stdafx.h"
 
 // integrators/volpath.cpp*
 #include "integrators/volpath.h"
@@ -40,6 +39,10 @@
 #include "bssrdf.h"
 #include "stats.h"
 
+STAT_FLOAT_DISTRIBUTION("Integrator/Path length", pathLength);
+STAT_COUNTER("Integrator/Volume interactions", volumeInteractions);
+STAT_COUNTER("Integrator/Surface interactions", surfaceInteractions);
+
 // VolPathIntegrator Method Definitions
 Spectrum VolPathIntegrator::Li(const RayDifferential &r, const Scene &scene,
                                Sampler &sampler, MemoryArena &arena,
@@ -48,7 +51,8 @@ Spectrum VolPathIntegrator::Li(const RayDifferential &r, const Scene &scene,
     Spectrum L(0.f), beta(1.f);
     RayDifferential ray(r);
     bool specularBounce = false;
-    for (int bounces = 0;; ++bounces) {
+    int bounces;
+    for (bounces = 0;; ++bounces) {
         // Intersect _ray_ with scene and store intersection in _isect_
         SurfaceInteraction isect;
         bool foundIntersection = scene.Intersect(ray, &isect);
@@ -60,12 +64,18 @@ Spectrum VolPathIntegrator::Li(const RayDifferential &r, const Scene &scene,
 
         // Handle an interaction with a medium or a surface
         if (mi.IsValid()) {
+            // Terminate path if ray escaped or _maxDepth_ was reached
+            if (bounces >= maxDepth) break;
+
+            ++volumeInteractions;
             // Handle scattering at point in medium for volumetric path tracer
             L += beta * UniformSampleOneLight(mi, scene, arena, sampler, true);
+
             Vector3f wo = -ray.d, wi;
             mi.phase->Sample_p(wo, &wi, sampler.Get2D());
             ray = mi.SpawnRay(wi);
         } else {
+            ++surfaceInteractions;
             // Handle scattering at point on surface for volumetric path tracer
 
             // Possibly add emitted light at intersection
@@ -138,12 +148,13 @@ Spectrum VolPathIntegrator::Li(const RayDifferential &r, const Scene &scene,
 
         // Possibly terminate the path with Russian roulette
         if (bounces > 3) {
-            Float continueProbability = std::min((Float).5, beta.y());
-            if (sampler.Get1D() > continueProbability) break;
-            beta /= continueProbability;
+            Float q = std::max((Float).05, 1 - beta.y());
+            if (sampler.Get1D() < q) break;
+            beta /= 1 - q;
             Assert(std::isinf(beta.y()) == false);
         }
     }
+    ReportValue(pathLength, bounces);
     return L;
 }
 

@@ -1,6 +1,6 @@
 
 /*
-    pbrt source code is Copyright(c) 1998-2015
+    pbrt source code is Copyright(c) 1998-2016
                         Matt Pharr, Greg Humphreys, and Wenzel Jakob.
 
     This file is part of pbrt.
@@ -37,7 +37,6 @@
 
 #ifndef PBRT_CORE_PARALLEL_H
 #define PBRT_CORE_PARALLEL_H
-#include "stdafx.h"
 
 // core/parallel.h*
 #include "pbrt.h"
@@ -76,10 +75,10 @@ class AtomicFloat {
 #endif
 };
 
-void ParallelFor(const std::function<void(int)> &func, int count,
+void ParallelFor(std::function<void(int64_t)> func, int64_t count,
                  int chunkSize = 1);
-extern thread_local int threadIndex;
-void ParallelFor(std::function<void(Point2i)> func, const Point2i &count);
+extern PBRT_THREAD_LOCAL int ThreadIndex;
+void ParallelFor2D(std::function<void(Point2i)> func, const Point2i &count);
 int MaxThreadIndex();
 int NumSystemCores();
 void TerminateWorkerThreads();

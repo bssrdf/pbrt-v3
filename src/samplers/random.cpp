@@ -1,6 +1,6 @@
 
 /*
-    pbrt source code is Copyright(c) 1998-2015
+    pbrt source code is Copyright(c) 1998-2016
                         Matt Pharr, Greg Humphreys, and Wenzel Jakob.
 
     This file is part of pbrt.
@@ -30,7 +30,6 @@
 
  */
 
-#include "stdafx.h"
 
 // samplers/random.cpp*
 #include "samplers/random.h"
@@ -46,7 +45,7 @@ Float RandomSampler::Get1D() {
 
 Point2f RandomSampler::Get2D() {
     Assert(currentPixelSampleIndex < samplesPerPixel);
-    return Point2f(rng.UniformFloat(), rng.UniformFloat());
+    return {rng.UniformFloat(), rng.UniformFloat()};
 }
 
 std::unique_ptr<Sampler> RandomSampler::Clone(int seed) {
@@ -62,8 +61,7 @@ void RandomSampler::StartPixel(const Point2i &p) {
 
     for (size_t i = 0; i < sampleArray2D.size(); ++i)
         for (size_t j = 0; j < sampleArray2D[i].size(); ++j)
-            sampleArray2D[i][j] =
-                Point2f(rng.UniformFloat(), rng.UniformFloat());
+            sampleArray2D[i][j] = {rng.UniformFloat(), rng.UniformFloat()};
     Sampler::StartPixel(p);
 }
 

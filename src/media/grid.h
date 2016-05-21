@@ -1,6 +1,6 @@
 
 /*
-    pbrt source code is Copyright(c) 1998-2015
+    pbrt source code is Copyright(c) 1998-2016
                         Matt Pharr, Greg Humphreys, and Wenzel Jakob.
 
     This file is part of pbrt.
@@ -37,7 +37,6 @@
 
 #ifndef PBRT_MEDIA_GRID_H
 #define PBRT_MEDIA_GRID_H
-#include "stdafx.h"
 
 // media/grid.h*
 #include "medium.h"
@@ -68,7 +67,7 @@ class GridDensityMedium : public Medium {
         Float maxDensity = 0;
         for (int i = 0; i < nx * ny * nz; ++i)
             maxDensity = std::max(maxDensity, density[i]);
-        invMaxDensity = 1 / (maxDensity * sigma_t);
+        invMaxDensity = 1 / maxDensity;
     }
 
     Float Density(const Point3f &p) const;

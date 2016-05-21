@@ -1,6 +1,6 @@
 
 /*
-    pbrt source code is Copyright(c) 1998-2015
+    pbrt source code is Copyright(c) 1998-2016
                         Matt Pharr, Greg Humphreys, and Wenzel Jakob.
 
     This file is part of pbrt.
@@ -37,7 +37,6 @@
 
 #ifndef PBRT_CORE_SPECTRUM_H
 #define PBRT_CORE_SPECTRUM_H
-#include "stdafx.h"
 
 // core/spectrum.h*
 #include "pbrt.h"
@@ -476,7 +475,12 @@ inline CoefficientSpectrum<nSpectrumSamples> Pow(
     return ret;
 }
 
-inline Spectrum Lerp(Float t, const Spectrum &s1, const Spectrum &s2) {
+inline RGBSpectrum Lerp(Float t, const RGBSpectrum &s1, const RGBSpectrum &s2) {
+    return (1 - t) * s1 + t * s2;
+}
+
+inline SampledSpectrum Lerp(Float t, const SampledSpectrum &s1,
+                            const SampledSpectrum &s2) {
     return (1 - t) * s1 + t * s2;
 }
 

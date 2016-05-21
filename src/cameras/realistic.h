@@ -1,6 +1,6 @@
 
 /*
-    pbrt source code is Copyright(c) 1998-2015
+    pbrt source code is Copyright(c) 1998-2016
                         Matt Pharr, Greg Humphreys, and Wenzel Jakob.
 
     This file is part of pbrt.
@@ -37,7 +37,6 @@
 
 #ifndef PBRT_CAMERAS_REALISTIC_H
 #define PBRT_CAMERAS_REALISTIC_H
-#include "stdafx.h"
 
 // cameras/realistic.h*
 #include "pbrt.h"
@@ -51,7 +50,8 @@ class RealisticCamera : public Camera {
     RealisticCamera(const AnimatedTransform &CameraToWorld, Float shutterOpen,
                     Float shutterClose, Float apertureDiameter,
                     Float focusDistance, bool simpleWeighting,
-                    const char *lensFile, Film *film, const Medium *medium);
+                    std::vector<Float> &lensData, Film *film,
+                    const Medium *medium);
     Float GenerateRay(const CameraSample &sample, Ray *) const;
 
   private:

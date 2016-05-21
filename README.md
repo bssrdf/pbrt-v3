@@ -2,11 +2,13 @@ pbrt, Version 3
 ===============
 
 [![Build Status](https://travis-ci.org/mmp/pbrt-v3.svg?branch=master)](https://travis-ci.org/mmp/pbrt-v3)
+[![Build status](https://ci.appveyor.com/api/projects/status/mlm9g91ejxlcn67s?svg=true)](https://ci.appveyor.com/project/mmp/pbrt-v3)
 
-This repository holds the current snapshot of the source code to the new
-version of pbrt that will be described in the forthcoming third edition of
-*Physically Based Rendering: From Theory to Implementation*.  As before,
-the code is available under the BSD license.
+This repository holds the source code to the new version of pbrt that will
+be described in the forthcoming third edition of *Physically Based
+Rendering: From Theory to Implementation*, by [Matt
+Pharr](http://pharr.org/matt), Greg Humphreys, and [Wenzel Jakob](http://www.mitsuba-renderer.org/~wenzel/).  As before, the code is
+available under the BSD license.
 
 Although the new version of the book won't be released until mid-2016,
 we're making the source code available now so that interested users can
@@ -17,7 +19,8 @@ documentation (and the book isn't out yet!), so you should only try it out
 if you're comfortable digging into source code.
 
 Some [example scenes are available for
-download](http://pbrt.org/pbrt-v3-scenes.tar.bz2).
+download](http://mmp.storage.googleapis.com/pbrt/pbrt-v3-scenes.tar.bz2). (Updated
+26 Nov 2015).
 
 The [pbrt website](http://pbrt.org) has  general information about
 both *Physically Based Rendering* as well as pbrt-v2, the previous version
@@ -28,9 +31,9 @@ Significant Changes
 
 The system has seen many changes since the second edition. To figure out
 how to use the new features, you may want to look at the example scene
-files in the `scenes/` directory and read through the source code to figure
-out the parameters and details of the following. (Better documentation will
-come once everything is finalized.)
+files and read through the source code to figure out the parameters and
+details of the following. (Better documentation will come once everything
+is finalized.)
 
 * Bidirectional path tracing: `Integrator "bdpt"` does proper bidirectional
   path tracing with multiple importance sampling.
@@ -46,6 +49,10 @@ come once everything is finalized.)
   hair, fur, and grass.
 * PLY mesh support: meshes in PLY format can be used directly: `Shape
   "plymesh" "string filename" "mesh.ply"`
+  * Existing scenes with triangle meshes specified via `Shape
+    "trianglemesh"` can be converted to PLY using the `--toply` command-line
+    option, which emits a PLY mesh for each triangle mesh and prints an
+    updated scene description file to standard out.
 * Realistic camera model: tracing rays through lenses to make images! See
   the `scenes/dragons` example scene.
 * Participating media: the boundaries of shapes are now used to delineate
@@ -68,11 +75,12 @@ come once everything is finalized.)
 * Improved microfacet models: specular transmission through microfacets,
   and Heitz's improved importance sampling.
 * No external dependencies: thanks to
-[Syoyo Fujita's tinyexr](https://github.com/syoyo/tinyexr),
 [Sean Barrett's stb_image_write.h](https://github.com/nothings/stb),
 [Diego Nehab's rply](http://www.impa.br/~diego/software/rply),
 and [Emil Mikulic's TARGA library](http://dmr.ath.cx/gfx/targa/), no
   external libraries need to be compiled to build pbrt.
+  The only slightly bigger dependency is [OpenEXR](http://www.openexr.com/),
+  and its build system is fully integrated with that of PBRT.
 
 Many other small things have been improved (parallelization scheme, image
 updates, statistics system, overall cleanliness of interfaces); see the
@@ -80,6 +88,18 @@ source code for details.
 
 Building The System
 -------------------
+
+First, to check out pbrt together with all dependencies, be sure to use the ``--recursive`` flag
+when cloning the repository, i.e.
+```bash
+$ git clone --recursive https://github.com/mmp/pbrt-v3/
+```
+If you accidentally already cloned pbrt without this flag (or to update an
+pbrt source tree from before change ``b9aa97b1f21f36b0``, run the following
+command to also fetch the dependencies:
+```bash
+$ git submodule update --init --recursive
+```
 
 pbrt uses [cmake](http://www.cmake.org/) for its build system.  On Linux
 and OS X, cmake is available via most package management systems.  For
@@ -151,17 +171,3 @@ place to report anything suspicious you find.  Useful things to do include:
 CPUs. It should be widely portable to other OSes and CPUs, but the only way
 to get those details right is for people to try it and let us know which
 targets don't currently work.
-* Images and figures: we'd like to refresh many of the figures in the book,
-but probably won't have time to get to all of them. If you can spend some
-time on making a nice scene or two that we can use for figures, that'd be a
-huge help. Specific areas of interest include:
-  * Subsurface scattering: a human face, biological objects, ...
-  * Showing off complex light transport using bidirectional path
-  tracing.
-  * Illustrating materials: something to replace all the usage of the
-  killeroo in Chapters 8 and 9...
-  * Showing the capabilities of the new curves primitive: hair, fur, fields
-  of grass, ...
-  * It would be great to have the [Digital
-  Emily](http://gl.ict.usc.edu/Research/DigitalEmily2) model available in pbrt.
-

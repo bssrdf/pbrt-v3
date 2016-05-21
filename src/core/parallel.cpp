@@ -1,6 +1,6 @@
 
 /*
-    pbrt source code is Copyright(c) 1998-2015
+    pbrt source code is Copyright(c) 1998-2016
                         Matt Pharr, Greg Humphreys, and Wenzel Jakob.
 
     This file is part of pbrt.
@@ -30,20 +30,11 @@
 
  */
 
-#include "stdafx.h"
 
 // core/parallel.cpp*
 #include "parallel.h"
 #include "memory.h"
 #include "stats.h"
-#ifdef PBRT_IS_WINDOWS
-#include <windows.h>
-#else
-#include <sys/sysctl.h>
-#endif  // PBRT_IS_WINDOWS
-#ifdef PBRT_IS_LINUX
-#include <unistd.h>
-#endif  // PBRT_IS_LINUX
 #include <list>
 #include <thread>
 #include <condition_variable>
@@ -57,7 +48,7 @@ static std::mutex workListMutex;
 class ParallelForLoop {
   public:
     // ParallelForLoop Public Methods
-    ParallelForLoop(std::function<void(int)> func1D, int maxIndex,
+    ParallelForLoop(std::function<void(int64_t)> func1D, int64_t maxIndex,
                     int chunkSize, int profilerState)
         : func1D(std::move(func1D)),
           maxIndex(maxIndex),
@@ -74,10 +65,12 @@ class ParallelForLoop {
 
   public:
     // ParallelForLoop Private Data
-    std::function<void(int)> func1D;
+    std::function<void(int64_t)> func1D;
     std::function<void(Point2i)> func2D;
-    const int maxIndex, chunkSize, profilerState;
-    int nextIndex = 0, activeWorkers = 0;
+    const int64_t maxIndex;
+    const int chunkSize, profilerState;
+    int64_t nextIndex = 0;
+    int activeWorkers = 0;
     ParallelForLoop *next = nullptr;
     int nX = -1;
 
@@ -89,7 +82,7 @@ class ParallelForLoop {
 
 static std::condition_variable workListCondition;
 static void workerThreadFunc(int tIndex) {
-    threadIndex = tIndex;
+    ThreadIndex = tIndex;
     std::unique_lock<std::mutex> lock(workListMutex);
     while (!shutdownThreads) {
         if (!workList) {
@@ -102,8 +95,9 @@ static void workerThreadFunc(int tIndex) {
             // Run a chunk of loop iterations for _loop_
 
             // Find the set of loop iterations to run next
-            int indexStart = loop.nextIndex;
-            int indexEnd = std::min(indexStart + loop.chunkSize, loop.maxIndex);
+            int64_t indexStart = loop.nextIndex;
+            int64_t indexEnd =
+                std::min(indexStart + loop.chunkSize, loop.maxIndex);
 
             // Update _loop_ to reflect iterations this thread will run
             loop.nextIndex = indexEnd;
@@ -112,7 +106,7 @@ static void workerThreadFunc(int tIndex) {
 
             // Run loop indices in _[indexStart, indexEnd)_
             lock.unlock();
-            for (int index = indexStart; index < indexEnd; ++index) {
+            for (int64_t index = indexStart; index < indexEnd; ++index) {
                 int oldState = profilerState;
                 profilerState = loop.profilerState;
                 if (loop.func1D) {
@@ -137,24 +131,25 @@ static void workerThreadFunc(int tIndex) {
 }
 
 // Parallel Definitions
-void ParallelFor(const std::function<void(int)> &func, int count,
+void ParallelFor(std::function<void(int64_t)> func, int64_t count,
                  int chunkSize) {
     // Run iterations immediately if not using threads or if _count_ is small
     if (PbrtOptions.nThreads == 1 || count < chunkSize) {
-        for (int i = 0; i < count; ++i) func(i);
+        for (int64_t i = 0; i < count; ++i) func(i);
         return;
     }
 
     // Launch worker threads if needed
     if (threads.size() == 0) {
         Assert(PbrtOptions.nThreads != 1);
-        threadIndex = 0;
+        ThreadIndex = 0;
         for (int i = 0; i < NumSystemCores() - 1; ++i)
             threads.push_back(std::thread(workerThreadFunc, i + 1));
     }
 
     // Create and enqueue _ParallelForLoop_ for this loop
-    ParallelForLoop loop(func, count, chunkSize, CurrentProfilerState());
+    ParallelForLoop loop(std::move(func), count, chunkSize,
+                         CurrentProfilerState());
     workListMutex.lock();
     loop.next = workList;
     workList = &loop;
@@ -169,8 +164,8 @@ void ParallelFor(const std::function<void(int)> &func, int count,
         // Run a chunk of loop iterations for _loop_
 
         // Find the set of loop iterations to run next
-        int indexStart = loop.nextIndex;
-        int indexEnd = std::min(indexStart + loop.chunkSize, loop.maxIndex);
+        int64_t indexStart = loop.nextIndex;
+        int64_t indexEnd = std::min(indexStart + loop.chunkSize, loop.maxIndex);
 
         // Update _loop_ to reflect iterations this thread will run
         loop.nextIndex = indexEnd;
@@ -179,7 +174,7 @@ void ParallelFor(const std::function<void(int)> &func, int count,
 
         // Run loop indices in _[indexStart, indexEnd)_
         lock.unlock();
-        for (int index = indexStart; index < indexEnd; ++index) {
+        for (int64_t index = indexStart; index < indexEnd; ++index) {
             int oldState = profilerState;
             profilerState = loop.profilerState;
             if (loop.func1D) {
@@ -199,13 +194,13 @@ void ParallelFor(const std::function<void(int)> &func, int count,
     }
 }
 
-thread_local int threadIndex;
+PBRT_THREAD_LOCAL int ThreadIndex;
 int MaxThreadIndex() {
     if (PbrtOptions.nThreads != 1) {
         // Launch worker threads if needed
         if (threads.size() == 0) {
             Assert(PbrtOptions.nThreads != 1);
-            threadIndex = 0;
+            ThreadIndex = 0;
             for (int i = 0; i < NumSystemCores() - 1; ++i)
                 threads.push_back(std::thread(workerThreadFunc, i + 1));
         }
@@ -213,7 +208,7 @@ int MaxThreadIndex() {
     return 1 + threads.size();
 }
 
-void ParallelFor(std::function<void(Point2i)> func, const Point2i &count) {
+void ParallelFor2D(std::function<void(Point2i)> func, const Point2i &count) {
     if (PbrtOptions.nThreads == 1) {
         for (int y = 0; y < count.y; ++y)
             for (int x = 0; x < count.x; ++x) func(Point2i(x, y));
@@ -222,7 +217,7 @@ void ParallelFor(std::function<void(Point2i)> func, const Point2i &count) {
     // Launch worker threads if needed
     if (threads.size() == 0) {
         Assert(PbrtOptions.nThreads != 1);
-        threadIndex = 0;
+        ThreadIndex = 0;
         for (int i = 0; i < NumSystemCores() - 1; ++i)
             threads.push_back(std::thread(workerThreadFunc, i + 1));
     }
@@ -242,8 +237,8 @@ void ParallelFor(std::function<void(Point2i)> func, const Point2i &count) {
         // Run a chunk of loop iterations for _loop_
 
         // Find the set of loop iterations to run next
-        int indexStart = loop.nextIndex;
-        int indexEnd = std::min(indexStart + loop.chunkSize, loop.maxIndex);
+        int64_t indexStart = loop.nextIndex;
+        int64_t indexEnd = std::min(indexStart + loop.chunkSize, loop.maxIndex);
 
         // Update _loop_ to reflect iterations this thread will run
         loop.nextIndex = indexEnd;
@@ -252,7 +247,7 @@ void ParallelFor(std::function<void(Point2i)> func, const Point2i &count) {
 
         // Run loop indices in _[indexStart, indexEnd)_
         lock.unlock();
-        for (int index = indexStart; index < indexEnd; ++index) {
+        for (int64_t index = indexStart; index < indexEnd; ++index) {
             int oldState = profilerState;
             profilerState = loop.profilerState;
             if (loop.func1D) {
@@ -274,36 +269,7 @@ void ParallelFor(std::function<void(Point2i)> func, const Point2i &count) {
 
 int NumSystemCores() {
     if (PbrtOptions.nThreads > 0) return PbrtOptions.nThreads;
-#ifdef PBRT_IS_WINDOWS
-    SYSTEM_INFO sysinfo;
-    GetSystemInfo(&sysinfo);
-    return sysinfo.dwNumberOfProcessors;
-#elif defined(__linux__)
-    return sysconf(_SC_NPROCESSORS_ONLN);
-#else
-// mac/bsds
-#ifdef __OpenBSD__
-    int mib[2] = {CTL_HW, HW_NCPU};
-#else
-    int mib[2];
-    mib[0] = CTL_HW;
-    size_t length = 2;
-    if (sysctlnametomib("hw.logicalcpu", mib, &length) == -1) {
-        Error("sysctlnametomib() filed.  Guessing 2 CPU cores.");
-        return 2;
-    }
-    Assert(length == 2);
-#endif
-    int nCores = 0;
-    size_t size = sizeof(nCores);
-
-    /* get the number of CPUs from the system */
-    if (sysctl(mib, 2, &nCores, &size, nullptr, 0) == -1) {
-        Error("sysctl() to find number of cores present failed");
-        return 2;
-    }
-    return nCores;
-#endif
+    return std::max(1u, std::thread::hardware_concurrency());
 }
 
 void TerminateWorkerThreads() {

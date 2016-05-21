@@ -1,6 +1,6 @@
 
 /*
-    pbrt source code is Copyright(c) 1998-2015
+    pbrt source code is Copyright(c) 1998-2016
                         Matt Pharr, Greg Humphreys, and Wenzel Jakob.
 
     This file is part of pbrt.
@@ -37,7 +37,6 @@
 
 #ifndef PBRT_CORE_TEXTURE_H
 #define PBRT_CORE_TEXTURE_H
-#include "stdafx.h"
 
 // core/texture.h*
 #include "pbrt.h"
@@ -50,7 +49,7 @@
 class TextureMapping2D {
   public:
     // TextureMapping2D Interface
-    virtual ~TextureMapping2D() {}
+    virtual ~TextureMapping2D();
     virtual Point2f Map(const SurfaceInteraction &si, Vector2f *dstdx,
                         Vector2f *dstdy) const = 0;
 };
@@ -113,7 +112,7 @@ class PlanarMapping2D : public TextureMapping2D {
 class TextureMapping3D {
   public:
     // TextureMapping3D Interface
-    virtual ~TextureMapping3D() {}
+    virtual ~TextureMapping3D();
     virtual Point3f Map(const SurfaceInteraction &si, Vector3f *dpdx,
                         Vector3f *dpdy) const = 0;
 };

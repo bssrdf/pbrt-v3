@@ -1,6 +1,6 @@
 
 /*
-    pbrt source code is Copyright(c) 1998-2015
+    pbrt source code is Copyright(c) 1998-2016
                         Matt Pharr, Greg Humphreys, and Wenzel Jakob.
 
     This file is part of pbrt.
@@ -37,7 +37,6 @@
 
 #ifndef PBRT_INTEGRATORS_BDPT_H
 #define PBRT_INTEGRATORS_BDPT_H
-#include "stdafx.h"
 
 // integrators/bdpt.h*
 #include "pbrt.h"
@@ -141,14 +140,11 @@ struct Vertex {
     // Vertex Public Data
     VertexType type;
     Spectrum beta;
-// Switch to a struct in debug mode to avoid a compiler error regarding
-// non-trivial constructors
-#if defined(NDEBUG) && !defined(PBRT_IS_MSVC)
-    union
+#ifdef PBRT_IS_MSVC2013
+  struct {
 #else
-    struct
-#endif
-        {
+  union {
+#endif // PBRT_IS_MSVC2013
         EndpointInteraction ei;
         MediumInteraction mi;
         SurfaceInteraction si;
@@ -162,13 +158,22 @@ struct Vertex {
         : type(type), beta(beta), ei(ei) {}
     Vertex(const SurfaceInteraction &si, const Spectrum &beta)
         : type(VertexType::Surface), beta(beta), si(si) {}
+
+    // Need to define these two to make compilers happy with the non-POD
+    // objects in the anonymous union above.
+    Vertex(const Vertex &v) { memcpy(this, &v, sizeof(Vertex)); }
+    Vertex &operator=(const Vertex &v) {
+        memcpy(this, &v, sizeof(Vertex));
+        return *this;
+    }
+
     static inline Vertex CreateCamera(const Camera *camera, const Ray &ray,
                                       const Spectrum &beta);
     static inline Vertex CreateCamera(const Camera *camera,
                                       const Interaction &it,
                                       const Spectrum &beta);
     static inline Vertex CreateLight(const Light *light, const Ray &ray,
-                                     const Normal3f &Nl, const Spectrum &Le,
+                                     const Normal3f &nLight, const Spectrum &Le,
                                      Float pdf);
     static inline Vertex CreateLight(const EndpointInteraction &ei,
                                      const Spectrum &beta, Float pdf);
@@ -225,6 +230,8 @@ struct Vertex {
                                                    BSDF_REFLECTION |
                                                    BSDF_TRANSMISSION)) > 0;
         }
+        Severe("Unhandled vertex type in IsConnectable()");
+        return false;  // NOTREACHED
     }
     bool IsLight() const {
         return type == VertexType::Light ||
@@ -278,11 +285,12 @@ struct Vertex {
            << "  beta = " << v.beta << std::endl
            << "]" << std::endl;
         return os;
-    };
+    }
     Float ConvertDensity(Float pdf, const Vertex &next) const {
         // Return solid angle density if _next_ is an infinite area light
         if (next.IsInfiniteLight()) return pdf;
         Vector3f w = next.p() - p();
+        if (w.LengthSquared() == 0) return 0;
         Float invDist2 = 1 / w.LengthSquared();
         if (next.IsOnSurface())
             pdf *= AbsDot(next.ng(), w * std::sqrt(invDist2));
@@ -299,7 +307,7 @@ struct Vertex {
             Assert(type == VertexType::Camera);
 
         // Compute directional density depending on the vertex types
-        Float pdf, unused;
+        Float pdf = 0, unused;
         if (type == VertexType::Camera)
             ei.camera->Pdf_We(ei.SpawnRay(wn), &unused, &pdf);
         else if (type == VertexType::Surface)
@@ -372,7 +380,7 @@ struct Vertex {
 
 extern int GenerateCameraSubpath(const Scene &scene, Sampler &sampler,
                                  MemoryArena &arena, int maxDepth,
-                                 const Camera &camera, Point2f &pFilm,
+                                 const Camera &camera, const Point2f &pFilm,
                                  Vertex *path);
 
 extern int GenerateLightSubpath(const Scene &scene, Sampler &sampler,

@@ -1,6 +1,6 @@
 
 /*
-    pbrt source code is Copyright(c) 1998-2015
+    pbrt source code is Copyright(c) 1998-2016
                         Matt Pharr, Greg Humphreys, and Wenzel Jakob.
 
     This file is part of pbrt.
@@ -30,7 +30,6 @@
 
  */
 
-#include "stdafx.h"
 
 // lights/diffuse.cpp*
 #include "lights/diffuse.h"
@@ -65,13 +64,13 @@ Float DiffuseAreaLight::Pdf_Li(const Interaction &ref,
 }
 
 Spectrum DiffuseAreaLight::Sample_Le(const Point2f &u1, const Point2f &u2,
-                                     Float time, Ray *ray, Normal3f *nL,
+                                     Float time, Ray *ray, Normal3f *nLight,
                                      Float *pdfPos, Float *pdfDir) const {
     // Sample a point on the area light's _Shape_, _pShape_
     Interaction pShape = shape->Sample(u1);
     pShape.mediumInterface = mediumInterface;
     *pdfPos = shape->Pdf(pShape);
-    *nL = pShape.n;
+    *nLight = pShape.n;
 
     // Sample a cosine-weighted outgoing direction _w_ for area light
     Vector3f w = CosineSampleHemisphere(u2);
@@ -85,7 +84,7 @@ Spectrum DiffuseAreaLight::Sample_Le(const Point2f &u1, const Point2f &u2,
 
 void DiffuseAreaLight::Pdf_Le(const Ray &ray, const Normal3f &n, Float *pdfPos,
                               Float *pdfDir) const {
-    Interaction it(ray.o, n, Vector3f(), Vector3f(), ray.time, mediumInterface);
+    Interaction it(ray.o, n, Vector3f(), Vector3f(n), ray.time, mediumInterface);
     *pdfPos = shape->Pdf(it);
     *pdfDir = CosineHemispherePdf(Dot(n, ray.d));
 }

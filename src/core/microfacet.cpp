@@ -1,6 +1,6 @@
 
 /*
-    pbrt source code is Copyright(c) 1998-2015
+    pbrt source code is Copyright(c) 1998-2016
                         Matt Pharr, Greg Humphreys, and Wenzel Jakob.
 
     This file is part of pbrt.
@@ -30,7 +30,6 @@
 
  */
 
-#include "stdafx.h"
 
 // core/microfacet.cpp*
 #include "microfacet.h"
@@ -46,6 +45,7 @@ static void BeckmannSample11(Float cosThetaI, Float U1, Float U2,
         Float cosPhi = std::cos(2 * Pi * U2);
         *slope_x = r * cosPhi;
         *slope_y = r * sinPhi;
+        return;
     }
 
     /* The original inversion routine from the paper contained
@@ -140,6 +140,8 @@ static Vector3f BeckmannSample(const Vector3f &wi, Float alpha_x, Float alpha_y,
 }
 
 // MicrofacetDistribution Method Definitions
+MicrofacetDistribution::~MicrofacetDistribution() { }
+
 Float BeckmannDistribution::D(const Vector3f &wh) const {
     Float tan2Theta = Tan2Theta(wh);
     if (std::isinf(tan2Theta)) return 0.;
@@ -235,20 +237,20 @@ static void TrowbridgeReitzSample11(Float cosTheta, Float U1, Float U2,
 
     Float sinTheta =
         std::sqrt(std::max((Float)0, (Float)1 - cosTheta * cosTheta));
-    Float tan_theta_i = sinTheta / cosTheta;
-    Float a = 1 / tan_theta_i;
+    Float tanTheta = sinTheta / cosTheta;
+    Float a = 1 / tanTheta;
     Float G1 = 2 / (1 + std::sqrt(1.f + 1.f / (a * a)));
 
     // sample slope_x
     Float A = 2 * U1 / G1 - 1;
     Float tmp = 1.f / (A * A - 1.f);
     if (tmp > 1e10) tmp = 1e10;
-    Float B = tan_theta_i;
+    Float B = tanTheta;
     Float D = std::sqrt(
         std::max(Float(B * B * tmp * tmp - (A * A - B * B) * tmp), Float(0)));
     Float slope_x_1 = B * tmp - D;
     Float slope_x_2 = B * tmp + D;
-    *slope_x = (A < 0 || slope_x_2 > 1.f / tan_theta_i) ? slope_x_1 : slope_x_2;
+    *slope_x = (A < 0 || slope_x_2 > 1.f / tanTheta) ? slope_x_1 : slope_x_2;
 
     Assert(!std::isinf(*slope_x));
     Assert(!std::isnan(*slope_x));

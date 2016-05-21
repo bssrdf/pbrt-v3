@@ -294,7 +294,7 @@ void Gen_Sample_f(BSDF* bsdf, const Vector3f& wo, Vector3f* wi, Float* pdf,
     // only glossy or diffuse reflections (no specular reflections)
     BxDFType inflags = BxDFType(BSDF_REFLECTION | BSDF_DIFFUSE | BSDF_GLOSSY);
     BxDFType outflags;
-    Point2f sample(rng.UniformFloat(), rng.UniformFloat());
+    Point2f sample {rng.UniformFloat(), rng.UniformFloat()};
     *f = bsdf->Sample_f(wo, wi, sample, pdf, inflags, &outflags);
 
     // double check bsdf->Pdf() gives us the same answer
@@ -304,7 +304,7 @@ void Gen_Sample_f(BSDF* bsdf, const Vector3f& wo, Vector3f* wi, Float* pdf,
 
     if (validSample) {
         float verifyPdf = bsdf->Pdf(wo, *wi, inflags);
-        float relErr = fabs(verifyPdf - *pdf) / *pdf;
+        float relErr = std::abs(verifyPdf - *pdf) / *pdf;
         if (relErr > 1e-3) {
             fprintf(stderr,
                     "BSDF::Pdf() doesn't match BSDF::Sample_f() !\n"

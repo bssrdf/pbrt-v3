@@ -1,6 +1,6 @@
 
 /*
-    pbrt source code is Copyright(c) 1998-2015
+    pbrt source code is Copyright(c) 1998-2016
                         Matt Pharr, Greg Humphreys, and Wenzel Jakob.
 
     This file is part of pbrt.
@@ -37,7 +37,6 @@
 
 #ifndef PBRT_CORE_MEDIUM_H
 #define PBRT_CORE_MEDIUM_H
-#include "stdafx.h"
 
 // core/medium.h*
 #include "pbrt.h"
@@ -48,6 +47,7 @@
 class PhaseFunction {
   public:
     // PhaseFunction Interface
+    virtual ~PhaseFunction();
     virtual Float p(const Vector3f &wo, const Vector3f &wi) const = 0;
     virtual Float Sample_p(const Vector3f &wo, Vector3f *wi,
                            const Point2f &u) const = 0;

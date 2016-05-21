@@ -1,6 +1,6 @@
 
 /*
-    pbrt source code is Copyright(c) 1998-2015
+    pbrt source code is Copyright(c) 1998-2016
                         Matt Pharr, Greg Humphreys, and Wenzel Jakob.
 
     This file is part of pbrt.
@@ -30,7 +30,6 @@
 
  */
 
-#include "stdafx.h"
 
 // samplers/halton.cpp*
 #include "samplers/halton.h"
@@ -38,7 +37,7 @@
 #include "rng.h"
 
 // HaltonSampler Local Constants
-static constexpr int kMaxResolution = 128;
+static PBRT_CONSTEXPR int kMaxResolution = 128;
 
 // HaltonSampler Utility Functions
 static void extendedGCD(uint64_t a, uint64_t b, int64_t *x, int64_t *y);

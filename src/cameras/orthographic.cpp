@@ -1,6 +1,6 @@
 
 /*
-    pbrt source code is Copyright(c) 1998-2015
+    pbrt source code is Copyright(c) 1998-2016
                         Matt Pharr, Greg Humphreys, and Wenzel Jakob.
 
     This file is part of pbrt.
@@ -30,7 +30,6 @@
 
  */
 
-#include "stdafx.h"
 
 // cameras/orthographic.cpp*
 #include "cameras/orthographic.h"
@@ -129,7 +128,7 @@ OrthographicCamera *CreateOrthographicCamera(const ParamSet &params,
         std::swap(shutterclose, shutteropen);
     }
     Float lensradius = params.FindOneFloat("lensradius", 0.f);
-    Float focaldistance = params.FindOneFloat("focaldistance", 1e30f);
+    Float focaldistance = params.FindOneFloat("focaldistance", 1e6f);
     Float frame = params.FindOneFloat(
         "frameaspectratio",
         Float(film->fullResolution.x) / Float(film->fullResolution.y));
